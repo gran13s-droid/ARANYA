@@ -156,9 +156,14 @@ describe.skipIf(!executablePath)('client in a real browser (2 tabs)', { timeout:
         if (a) seen.add(a);
       }, 20);
     });
+    // Wait for each swing to be accepted and to finish instead of fixed sleeps: under load
+    // (software WebGL + server on one CPU) fixed waits drift and the next press lands early.
+    const okAttacks = async (): Promise<number> => (await probe(page))!.acks.filter((x) => x.skill === 'attack' && x.ok).length;
     for (let i = 0; i < 3; i++) {
+      const n = await okAttacks();
       await page.keyboard.press('Digit1');
-      await page.waitForTimeout(420);
+      await expect.poll(okAttacks, { timeout: 3_000, interval: 30 }).toBe(n + 1);
+      await expect.poll(async () => (await probe(page))!.localAnim!.anim.startsWith('attack'), { timeout: 3_000, interval: 30 }).toBe(false);
     }
     const anims = new Set(await page.evaluate(() => [...(window as unknown as { __anims: Set<string> }).__anims]));
     await page.waitForTimeout(300);
@@ -181,6 +186,27 @@ describe.skipIf(!executablePath)('client in a real browser (2 tabs)', { timeout:
     await page.waitForTimeout(1600);
     await page.mouse.up();
     await expect.poll(async () => (await probe(page))!.acks.filter((a) => a.skill === 'attack' && a.ok).length - acksBefore, { timeout: 3_000 }).toBeGreaterThanOrEqual(3);
+    expect(errors).toEqual([]);
+  });
+
+  it('draws Lost Sprout monsters as 48 px pixel sprites (tracker M-01)', async () => {
+    const page = await open('monsters');
+    await expect.poll(async () => (await probe(page))?.local ?? null, { timeout: 15_000 }).not.toBeNull();
+    // Every Lost Sprout gets a sprite once the monsters sync; other species keep the low-poly placeholder.
+    await expect.poll(async () => (await probe(page))!.monsterSprites, { timeout: 5_000 }).toBe(3);
+    const anims = (await probe(page))!.monsterAnims;
+    expect(Object.keys(anims).every((id) => id.startsWith('lostMom_'))).toBe(true);
+    expect(Object.values(anims).every((a) => ['idle', 'move', 'attack', 'hit', 'death'].includes(a))).toBe(true);
+
+    // Walk south-west towards their spawn so the screenshot shows them.
+    await page.click('#game');
+    await page.keyboard.down('KeyA');
+    await page.keyboard.down('KeyS');
+    await page.waitForTimeout(1700);
+    await page.keyboard.up('KeyA');
+    await page.keyboard.up('KeyS');
+    await page.waitForTimeout(400);
+    await page.screenshot({ path: `${artifacts}monsters.png` });
     expect(errors).toEqual([]);
   });
 

@@ -13,8 +13,13 @@ import { containsXZ, heightAt, MOVE_AXIS_MAX, RUN_SPEED, SWORDSMAN, TICK_DT, typ
  */
 
 const firstHit = SWORDSMAN.attack.combo[0]!.shape;
-/** Stop this close to a chased target so the first combo swing reaches it (m). */
-export const MELEE_REACH = (firstHit.kind === 'arc' ? firstHit.radius : 2) - 0.5;
+/**
+ * Stop this close to a chased target so the first combo swing reaches it (m).
+ * The margin covers the server lagging the predicted position by a few ticks
+ * when the swing starts (3 ticks of running = 0.75 m), so the swing never
+ * misses at the edge of its 2.2 m arc.
+ */
+export const MELEE_REACH = (firstHit.kind === 'arc' ? firstHit.radius : 2) - 0.8;
 
 /** Distance under which a point order counts as reached: half a tick of walking. */
 export const ARRIVE_DIST = (RUN_SPEED * TICK_DT) / 2;

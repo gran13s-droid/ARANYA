@@ -3,6 +3,8 @@ import { INTERPOLATION_DELAY_MS, MONSTERS, PPU, type Element, type MonsterId, ty
 import { InterpolationBuffer } from '../net/interpolation.ts';
 import { color, type PaletteName } from '../palette.ts';
 import { WORLD_BAR, worldBarFrame } from '../ui/pixelArt.ts';
+import { facingFromMove } from '../sprites/facing.ts';
+import type { MonsterSprite, MonsterSprites } from '../sprites/monsterSprites.ts';
 
 /** World HP bar sizes in meters: 1 texel = 1/PPU m, so it reads as pixel art next to sprites. */
 const TEXEL = 1 / PPU;
@@ -34,6 +36,10 @@ interface Visual {
   last: NetTarget;
   hover: number;
   age: number;
+  /** Pixel sprite when the species has an atlas; the low-poly body is then only a hidden click target. */
+  sprite: MonsterSprite | null;
+  /** Rendered position last frame, for the sprite's walk/idle speed. */
+  lastPos: Vec3 | null;
 }
 
 /** What other systems need to know about a target (soft lock, aiming). */
@@ -57,7 +63,31 @@ export class TargetViews {
   private readonly visuals = new Map<string, Visual>();
   private readonly mats = new Map<string, StandardMaterial>();
 
+  private sprites: MonsterSprites | null = null;
+
   constructor(private readonly scene: Scene) {}
+
+  /** Monsters created after this use pixel sprites when their species has an atlas (tracker M-01..M-03). */
+  useSprites(sprites: MonsterSprites): void {
+    this.sprites = sprites;
+  }
+
+  /** Server telegraph from a monster: play its wind-up until the attack lands. */
+  windup(id: string, durationMs: number): void {
+    this.visuals.get(id)?.sprite?.animator.windup(durationMs);
+  }
+
+  /** A monster took damage: flinch. */
+  hit(id: string): void {
+    this.visuals.get(id)?.sprite?.animator.hit();
+  }
+
+  /** Animation of each sprite monster (dev probe). */
+  spriteAnims(): Record<string, string> {
+    const out: Record<string, string> = {};
+    for (const [id, v] of this.visuals) if (v.sprite) out[id] = v.sprite.animator.current;
+    return out;
+  }
 
   private mat(name: PaletteName, unlit = false): StandardMaterial {
     const key = `${name}:${unlit}`;
@@ -162,7 +192,14 @@ export class TargetViews {
     const body = new TransformNode(`targetBody_${id}`, s);
     body.parent = root;
     const isMonster = t.kind === 'monster' && t.species in MONSTERS;
-    if (isMonster) this.buildMonster(id, t.species as MonsterId, body);
+    const sprite = isMonster && this.sprites?.has(t.species) ? this.sprites.spawn(t.species) : null;
+    if (sprite) {
+      // Invisible click target the size of the sprite's body (visibility 0 is skipped when
+      // rendering but still pickable), so soft lock and click-to-move work on sprites.
+      const pick = this.part(id, MeshBuilder.CreateCylinder(`pick_${id}`, { height: 1.3, diameter: 0.9, tessellation: 6 }, s), body, 'INK');
+      pick.position.y = 0.65;
+      pick.visibility = 0;
+    } else if (isMonster) this.buildMonster(id, t.species as MonsterId, body);
     else this.buildDummy(id, t, body);
 
     const ring = this.part(id, MeshBuilder.CreateTorus(`ring_${id}`, { diameter: isMonster ? 0.9 : 1.1, thickness: 0.06, tessellation: 16 }, s), root, ELEMENT_COLOR[t.element as Element] ?? 'STONE', true);
@@ -187,7 +224,7 @@ export class TargetViews {
     barFill.parent = bar;
 
     const hover = isMonster ? (MONSTERS[t.species as MonsterId].hoverM ?? 0) : 0;
-    const v: Visual = { root, body, barFill, buffer: new InterpolationBuffer(), last: t, hover, age: Math.random() * 1000 };
+    const v: Visual = { root, body, barFill, buffer: new InterpolationBuffer(), last: t, hover, age: Math.random() * 1000, sprite, lastPos: null };
     this.visuals.set(id, v);
     return v;
   }
@@ -213,6 +250,10 @@ export class TargetViews {
       if (p) v.root.position.set(p.x, p.y, p.z);
       v.age += dtMs;
       v.body.position.y = v.hover > 0 ? v.hover + Math.sin(v.age / 300) * 0.06 : 0;
+      if (v.sprite) {
+        this.updateSprite(v, dtMs);
+        continue;
+      }
       v.body.rotation.y = Math.atan2(t.fx, t.fz);
       // Stunned targets lean back; broken dummies lie down until they reset.
       v.body.rotation.x = t.hp === 0 ? -1.3 : t.stunned ? -0.35 : 0;
@@ -220,6 +261,23 @@ export class TargetViews {
       v.barFill.scaling.x = Math.max(0.001, k);
       v.barFill.position.x = -(1 - k) * (BAR_TRACK_M / 2);
     }
+  }
+
+  private updateSprite(v: Visual, dtMs: number): void {
+    const t = v.last;
+    const a = v.sprite!.animator;
+    const pos = v.root.position;
+    if (v.lastPos && dtMs > 0) a.setSpeed((Math.hypot(pos.x - v.lastPos.x, pos.z - v.lastPos.z) / dtMs) * 1000);
+    v.lastPos = { x: pos.x, y: pos.y, z: pos.z };
+    a.facing = facingFromMove(t.fx, t.fz, a.facing);
+    if (t.hp <= 0) a.die();
+    else if (a.isDead) a.revive();
+    // Dead monsters stay visible until the purify animation ends (Art Bible 7.7).
+    v.sprite!.setVisible(t.hp > 0 || !a.deathFinished);
+    v.sprite!.update(dtMs, { x: pos.x, y: pos.y + v.body.position.y, z: pos.z });
+    const k = t.maxHp > 0 ? t.hp / t.maxHp : 0;
+    v.barFill.scaling.x = Math.max(0.001, k);
+    v.barFill.position.x = -(1 - k) * (BAR_TRACK_M / 2);
   }
 
   get(id: string): TargetInfo | null {

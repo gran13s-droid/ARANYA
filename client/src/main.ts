@@ -12,6 +12,7 @@ import {
   TICK_MS,
   ZONE_ROOM,
   hitDelayMs,
+  monsterAtlasName,
   type CastAck,
   type CastStarted,
   type Element,
@@ -39,7 +40,8 @@ import { PredictedPlayer } from './net/prediction.ts';
 import { color, type PaletteName } from './palette.ts';
 import { CharacterLayer, type CharacterSprite } from './sprites/characterLayer.ts';
 import { facingFromMove } from './sprites/facing.ts';
-import { loadAtlas } from './sprites/loadAtlas.ts';
+import { listAtlases, loadAtlas } from './sprites/loadAtlas.ts';
+import { MonsterSprites } from './sprites/monsterSprites.ts';
 import { DODGE_KEY, HOTBAR_KEYS, Hud, type HudTarget } from './ui/hud.ts';
 import { TargetViews, type NetTarget, type TargetInfo } from './world/targets.ts';
 import { createWorld } from './world/world.ts';
@@ -124,6 +126,16 @@ async function start(): Promise<void> {
   statusEl.textContent = t('connecting');
   const { atlas, imageUrl } = await loadAtlas(CHARACTER_ATLAS);
   const layer = new CharacterLayer(world.scene, level, atlas, imageUrl);
+  // Monster sprites (48 px, tracker M-01..M-03); species without an atlas keep the low-poly placeholder.
+  const built = await listAtlases();
+  const monsterAtlases = new Map<string, Awaited<ReturnType<typeof loadAtlas>>>();
+  await Promise.all(
+    Object.keys(MONSTERS)
+      .filter((species) => built.has(monsterAtlasName(species)))
+      .map(async (species) => monsterAtlases.set(species, await loadAtlas(monsterAtlasName(species)))),
+  );
+  const monsterSprites = new MonsterSprites(world.scene, monsterAtlases);
+  targetViews.useSprites(monsterSprites);
   // HUD portrait: the hero's first idle frame facing the camera (placeholder for a painted face, tracker U-03).
   const faceKey = atlas.animations['idle_S']?.frames[0];
   const faceRect = faceKey ? atlas.frames[faceKey]?.frame : undefined;
@@ -163,11 +175,15 @@ async function start(): Promise<void> {
     r.sprite.animator.facing = facingFromMove(evt.fx, evt.fz, r.sprite.animator.facing);
     if (evt.anim !== 'idle' && evt.anim !== 'walk' && evt.anim !== 'run') r.sprite.animator.play(evt.anim);
   });
-  room.onMessage(Msg.Telegraph, (evt: TelegraphEvent) => telegraphs.show(evt));
+  room.onMessage(Msg.Telegraph, (evt: TelegraphEvent) => {
+    telegraphs.show(evt);
+    targetViews.windup(evt.source, evt.durationMs);
+  });
   room.onMessage(Msg.Projectile, (evt: ProjectileEvent) => projectiles.spawn(evt));
   room.onMessage(Msg.ProjectileEnd, (evt: ProjectileEndEvent) => projectiles.end(evt));
   room.onMessage(Msg.Hits, (hits: HitEvent[]) => {
     for (const h of hits) {
+      if (h.kind === 'damage') targetViews.hit(h.target);
       if (h.kind === 'death') {
         purify.show(h);
         continue;
@@ -275,6 +291,8 @@ async function start(): Promise<void> {
         telegraphs: telegraphs.count,
         locked: softLock.selected,
         moveOrder: clickMove.order,
+        monsterSprites: monsterSprites.count,
+        monsterAnims: targetViews.spriteAnims(),
         targetPos: Object.fromEntries(targetViews.all().map((tg) => [tg.id, tg.pos])),
         projectiles: projectiles.count,
         acks: ackLog.slice(-10),

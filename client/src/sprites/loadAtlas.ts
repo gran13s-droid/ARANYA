@@ -1,7 +1,14 @@
-import type { AtlasJson } from '@aranya/shared';
+import type { AtlasIndex, AtlasJson } from '@aranya/shared';
 
 /** Base URL of atlases built by `pnpm assets` (tools/src/cli/buildSprites.ts). */
 const SPRITES_URL = `${import.meta.env.BASE_URL}assets/sprites/`;
+
+/** Names of the atlases that exist (written by build-sprites). */
+export async function listAtlases(): Promise<Set<string>> {
+  const res = await fetch(`${SPRITES_URL}index.json`);
+  if (!res.ok) return new Set();
+  return new Set(((await res.json()) as AtlasIndex).atlases);
+}
 
 export async function loadAtlas(name: string): Promise<{ atlas: AtlasJson; imageUrl: string }> {
   const res = await fetch(`${SPRITES_URL}${name}.json`);

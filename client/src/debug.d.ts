@@ -24,6 +24,9 @@ declare global {
       locked: string | null;
       /** Rendered position of every living target. */
       targetPos: Record<string, Vec3>;
+      /** Monsters drawn as pixel sprites, and each one's current animation. */
+      monsterSprites: number;
+      monsterAnims: Record<string, string>;
       /** Current click-to-move order. */
       moveOrder: MoveOrder | null;
       /** Enemy projectiles in flight. */
