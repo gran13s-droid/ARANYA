@@ -26,6 +26,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
   - **Step 1.2 ระบบต่อสู้**: ชุดสกิลนักดาบครบตาม GDD 5.2 บนแถบลัด 7 ช่อง, ดาเมจและการโดนตัดสินที่ server (มี lag compensation), หุ่นฝึก 4 ธาตุและหุ่นซ้อมที่ฟันกลับ, เลขดาเมจ, hit stop และกล้องสั่น ตัวเลขที่ GDD ยังไม่มีเป็นค่าชั่วคราวใน GDD 4.4
   - **Step 1.3 AI มอนสเตอร์**: ผู้ใช้เลือกมอนจาก GDD 8.3 (ลูกมอมหลงทาง, ไก่ป่าเพลิง, ผีโขมด) พร้อม soft lock เป้า ยั่วด้วยยืนม้าหยก และกระสุนที่ตรวจชนแบบ swept ภาพมอนยังเป็นโมเดล low-poly ชั่วคราว
   - ปรับตามผู้ใช้: แถบลัดปุ่ม 1–7 (ยา HP + ยามานา), คลิกซ้ายล็อกเป้า / กดค้างโจมตี, แถบทรัพยากรแสดงเป็น "มานา"
+  - **UI placeholder แบบพิกเซล** ตามภาพที่ 2 (`ref_02_ui_effect.png`): HUD ผู้เล่น, แถบสกิลข้าวหลามตัด, แผงเป้าหมาย และแถบ HP เหนือหัวมอน วาดจากโค้ด รอศิลปินทำ U-03 / U-05 / U-06 (ขนาดไอคอน 24 หรือ 32 ยังไม่ได้ตัดสิน ดู tracker U-06)
 - ถัดไป: **Step 2.1 ฉากโซน 1** (ดูข้อขัดแย้งในตารางท้ายไฟล์)
 - ค่าชั่วคราว (ความเร็ววิ่ง, ค่าพลัง, ตัวคูณคอมโบ ฯลฯ) อยู่ใน GDD 4.4 ถ้าแก้ตัวเลขใน `/shared` ต้องแก้ตาราง GDD 4.4 ให้ตรงกันด้วย
 - **ข้อเสนอที่ยังไม่อนุมัติ** อยู่ใน Art Bible หัวข้อ 13 (แถวที่สถานะเป็น "เสนอ") ยังไม่ใช่ canon ห้ามนำไปเขียนโค้ดหรือแก้ GDD จนกว่าผู้ใช้จะอนุมัติ ข้อที่ขวางงานอยู่คือข้อ 5 (pipeline 3D → พิกเซล) ซึ่งต้องตัดสินก่อนเริ่ม `C-02`
@@ -104,10 +105,11 @@ client ต่อ server ที่ `http://<hostname>:2567` ถ้าจะเป
 
 ## สถาปัตยกรรม
 
-**โครงสร้าง repo** (`/tools` และ `/infra` ยังไม่ได้สร้าง)
+**โครงสร้าง repo** (`/infra` ยังไม่ได้สร้าง)
 
 ```
 /client   Babylon.js + Vite (PWA ยังไม่ได้ตั้ง)
+/e2e      Vitest + playwright-core (เปิด server และ Vite ของตัวเอง)
 /server   Colyseus rooms + systems
 /shared   types, ค่าคงที่, logic ที่ต้องรันเหมือนกันทั้งสองฝั่ง (import เป็น .ts ตรง ๆ ไม่มี build step)
 /tools    asset pipeline + สคริปต์ตรวจอาร์ตใน CI
@@ -119,9 +121,10 @@ client ต่อ server ที่ `http://<hostname>:2567` ถ้าจะเป
 
 - `shared/src/movement.ts` `stepPlayer()` เป็นฟังก์ชัน pure ที่เดิน 1 tick ใช้ทั้งใน `server/src/rooms/ZoneRoom.ts` (ผลจริง) และ `client/src/net/prediction.ts` (ทำนายและ replay ตอน reconcile) **ถ้าแก้กติกาการเดิน ต้องแก้ที่ shared เท่านั้น** ไม่อย่างนั้นสองฝั่งจะคำนวณไม่ตรงกัน
 - client ส่งแค่ intent `{ seq, mx, mz }` (ค่า -1/0/1) ทุก tick ฝั่ง server ตรวจด้วย `parseInput()` และจำกัดอัตราด้วย `server/src/inputQueue.ts` (token bucket: เฉลี่ยไม่เกิน 1 input ต่อ tick จึงกัน speed hack ได้)
-- state ที่ sync (`server/src/state.ts`) มีแค่ตำแหน่ง + `lastSeq` ส่วนค่าความละเอียดเต็มเก็บใน `PlayerSim` ฝั่ง server
+- state ที่ sync (`server/src/state.ts`) มีเฉพาะสิ่งที่ client ต้องวาดหรือ reconcile: ตำแหน่ง, `lastSeq`, ฟิลด์ของ `Motion`, HP / ทรัพยากร และ `TargetState` ของหุ่นและมอน ส่วนค่าความละเอียดเต็มเก็บใน `PlayerSim` ฝั่ง server
 - ผู้เล่นคนอื่นใช้ `client/src/net/interpolation.ts` ซึ่งวาดย้อนหลัง 100ms และไม่ extrapolate
 - พื้นหลายชั้นใช้ walk polygon ใน `shared/src/walkmesh.ts` (polygon นูนที่ซ้อนกันในแนวตั้งได้ + ธง `solid` + ไม่มีการตก) เป็นตัวแทน navmesh ชั่วคราวของ `F-08` ถ้าเปลี่ยนเป็น navmesh ที่ bake ให้คงสัญญาของ `resolveMove()` ไว้ ฉากที่ client วาดสร้างจากข้อมูล level เดียวกับที่ server ใช้ชน
+
 **การต่อสู้ (Step 1.2)**
 
 - **ข้อมูลกลาง** อยู่ใน shared:
@@ -165,6 +168,15 @@ client ต่อ server ที่ `http://<hostname>:2567` ถ้าจะเป
   - `CharacterAnimator` คุม state ของท่า ส่วน `facing.ts` แปลงทิศการเดินเป็น 4 ทิศ โดยทิศ W ใช้ภาพทิศ E กลับด้าน
   - sprite วางให้พิกเซล pivot (เท้า) ตรงจุดบนพื้น โดยเลื่อนตามแกน up ของกล้อง
 - กล้อง: `client/src/camera/pixelCamera.ts` คำนวณระยะกล้องจาก pixel scale จำนวนเต็ม (`floor(ความสูงจอ / 360)`) และสีทั้งหมดอ่านจาก `art/palette/aranya-15.gpl` ผ่าน `client/src/palette.ts` ห้ามฮาร์ดโค้ด hex
+
+**UI / HUD**
+
+- DOM ทับบน canvas ของ Babylon ทุกขนาดเป็นหน่วยพิกเซล UI ที่ 640×360 ผ่านตัวแปร CSS `--u` (= CSS px ต่อ 1 พิกเซล UI จาก `uiPixelSize()` ซึ่งเป็น `floor(min(w/640, h/360))` หาร devicePixelRatio) และองค์ประกอบที่จัดกลางจอต้องคำนวณตำแหน่งให้ลงพิกเซลจริงพอดี ไม่อย่างนั้นภาพ NEAREST จะเบลอ
+- `client/src/ui/pixelArt.ts` วาดภาพ UI ทั้งหมดจากโค้ดด้วยสีจากพาเลตต์ แล้ว cache เป็น data URL เมื่อศิลปินส่งภาพจริง ให้แทนที่เฉพาะฟังก์ชันในไฟล์นี้ โดยไม่ต้องแก้ DOM ใน `hud.ts`
+- `hud.ts` เขียน DOM เฉพาะเมื่อค่าเปลี่ยน (`write()`, `BarView.set()`) เพราะ `update()` ถูกเรียกทุกเฟรม
+- ตัวเลขทั้งใน HUD และเลขดาเมจใช้ฟอนต์ bitmap ชุดเดียวใน `ui/bitmapFont.ts` ส่วนข้อความอื่นเป็น vector font จาก i18n
+- แถบ HP เหนือหัวมอน (`world/targets.ts`) ใช้ texture กรอบเดียวกันทุกตัว ขนาด 1 texel = 1/PPU เมตร
+- e2e อ้างอิง class `.hud-target` ของแผงเป้าหมาย
 
 **Rooms และ service**
 
