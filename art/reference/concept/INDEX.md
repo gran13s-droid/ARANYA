@@ -26,6 +26,7 @@
 | 18 | [ref_18_naga_boss_p1_sheet.png](ref_18_naga_boss_p1_sheet.png) | บอสนาคเฟส 1: turnaround + ท่า | [ref_18-19](briefs/ref_18-19_naga_boss_p1.md) | 7.4 | B-01 |
 | 19 | [ref_19_naga_boss_p1_attacks.png](ref_19_naga_boss_p1_attacks.png) | บอสนาคเฟส 1: ท่าโจมตี 4 แบบ | [ref_18-19](briefs/ref_18-19_naga_boss_p1.md) | 7.4 | B-01, V-13 |
 | 20 | [ref_20_hero_spritesheet.png](ref_20_hero_spritesheet.png) | Hero sprite sheet แบบภาพวาด 15×8 ช่อง (~111×117 px) | ไม่มีคำอธิบายแนบมา, [ref_20_hero_spritesheet.json](ref_20_hero_spritesheet.json) บอกว่าช่องไหนคือท่าและทิศอะไร | – | C-02 |
+| 21 | [ref_21_ui_vfx_kit.png](ref_21_ui_vfx_kit.png) | UI kit (กรอบ HUD, กรอบคู่หู, ช่องสกิล, กรอบหัวข้อ, แผง 9-slice) + VFX หยกราว 17 ชิ้น | ไม่มีคำอธิบายแนบมา สร้างจาก prompt UI sheet (แผ่น 1–2) ที่ Claude ให้ | 9.6 | U-02–U-05, V-02, V-03, V-05–V-09, V-15 |
 
 ## การเพิ่มภาพใหม่
 

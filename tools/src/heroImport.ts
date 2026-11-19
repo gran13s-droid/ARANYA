@@ -132,9 +132,14 @@ export function rowBands(img: Image, rows: number): [number, number][] {
 
 /** Cells of one direction sheet: cells[row][col], each cut at the emptiest lines near the grid. */
 export function sliceSheet(img: Image, cols = SHEET_COLS, rows = SHEET_ROWS): Image[][] {
+  return sliceSheetCells(img, cols, rows).map((row) => row.map((c) => c.image));
+}
+
+/** Like sliceSheet, plus each cell's left edge in the sheet. */
+export function sliceSheetCells(img: Image, cols: number, rows: number): { image: Image; x: number }[][] {
   return rowBands(img, rows).map(([y0, y1]) => {
     const cuts = cutPoints(profile(img, 'col', 0, img.width - 1, y0, y1), cols);
-    return Array.from({ length: cols }, (_, c) => crop(img, cuts[c]!, y0, cuts[c + 1]! - cuts[c]!, y1 - y0 + 1));
+    return Array.from({ length: cols }, (_, c) => ({ image: crop(img, cuts[c]!, y0, cuts[c + 1]! - cuts[c]!, y1 - y0 + 1), x: cuts[c]! }));
   });
 }
 
@@ -158,7 +163,7 @@ export function suspiciousCells(cells: Image[][], rows: readonly PlayerAnim[] = 
   return out;
 }
 
-function solidHeight(img: Image): number {
+export function solidHeight(img: Image): number {
   let top = -1;
   let bottom = -1;
   for (let y = 0; y < img.height; y++) {
@@ -173,7 +178,7 @@ function solidHeight(img: Image): number {
   return top < 0 ? 0 : bottom - top + 1;
 }
 
-const median = (v: number[]): number => {
+export const median = (v: number[]): number => {
   const s = [...v].sort((a, b) => a - b);
   return s[Math.floor(s.length / 2)] ?? 0;
 };

@@ -49,6 +49,10 @@ describe.skipIf(!executablePath)('client in a real browser (2 tabs)', { timeout:
   const probe = (page: Page): Promise<ProbeResult | null> =>
     page.evaluate(() => (window.__aranyaDebug ? window.__aranyaDebug() : null));
 
+  /** CSS pixel of a world point, for clicking the ground or a target. */
+  const screenOf = (page: Page, p: { x: number; y: number; z: number }): Promise<{ x: number; y: number }> =>
+    page.evaluate(([x, y, z]) => window.__aranyaProject!(x, y, z), [p.x, p.y, p.z] as const);
+
   beforeAll(async () => {
     mkdirSync(artifacts, { recursive: true });
     browser = await chromium.launch({
@@ -152,9 +156,14 @@ describe.skipIf(!executablePath)('client in a real browser (2 tabs)', { timeout:
         if (a) seen.add(a);
       }, 20);
     });
+    // Wait for each swing to be accepted and to finish instead of fixed sleeps: under load
+    // (software WebGL + server on one CPU) fixed waits drift and the next press lands early.
+    const okAttacks = async (): Promise<number> => (await probe(page))!.acks.filter((x) => x.skill === 'attack' && x.ok).length;
     for (let i = 0; i < 3; i++) {
+      const n = await okAttacks();
       await page.keyboard.press('Digit1');
-      await page.waitForTimeout(420);
+      await expect.poll(okAttacks, { timeout: 3_000, interval: 30 }).toBe(n + 1);
+      await expect.poll(async () => (await probe(page))!.localAnim!.anim.startsWith('attack'), { timeout: 3_000, interval: 30 }).toBe(false);
     }
     const anims = new Set(await page.evaluate(() => [...(window as unknown as { __anims: Set<string> }).__anims]));
     await page.waitForTimeout(300);
@@ -167,14 +176,71 @@ describe.skipIf(!executablePath)('client in a real browser (2 tabs)', { timeout:
     // The locked target itself took the damage (attacks auto-aimed at it).
     await expect.poll(async () => (await probe(page))!.targets[lockedId]!, { timeout: 5_000 }).toBeLessThan(full);
 
-    // Holding the left mouse button keeps attacking (several accepted attack casts in a row).
+    // Holding the left mouse button on the locked target keeps attacking it (several accepted attack casts in a row).
     const acksBefore = (await probe(page))!.acks.filter((a) => a.skill === 'attack' && a.ok).length;
     await page.waitForTimeout(800); // leave the combo window so the chain restarts cleanly
-    await page.mouse.move(640, 600);
+    const dummyAt = (await probe(page))!.targetPos[lockedId]!;
+    const onDummy = await screenOf(page, { ...dummyAt, y: dummyAt.y + 0.8 });
+    await page.mouse.move(onDummy.x, onDummy.y);
     await page.mouse.down();
     await page.waitForTimeout(1600);
     await page.mouse.up();
     await expect.poll(async () => (await probe(page))!.acks.filter((a) => a.skill === 'attack' && a.ok).length - acksBefore, { timeout: 3_000 }).toBeGreaterThanOrEqual(3);
+    expect(errors).toEqual([]);
+  });
+
+  it('draws Lost Sprout monsters as 48 px pixel sprites (tracker M-01)', async () => {
+    const page = await open('monsters');
+    await expect.poll(async () => (await probe(page))?.local ?? null, { timeout: 15_000 }).not.toBeNull();
+    // Every Lost Sprout gets a sprite once the monsters sync; other species keep the low-poly placeholder.
+    await expect.poll(async () => (await probe(page))!.monsterSprites, { timeout: 5_000 }).toBe(3);
+    const anims = (await probe(page))!.monsterAnims;
+    expect(Object.keys(anims).every((id) => id.startsWith('lostMom_'))).toBe(true);
+    expect(Object.values(anims).every((a) => ['idle', 'move', 'attack', 'hit', 'death'].includes(a))).toBe(true);
+
+    // Walk south-west towards their spawn so the screenshot shows them.
+    await page.click('#game');
+    await page.keyboard.down('KeyA');
+    await page.keyboard.down('KeyS');
+    await page.waitForTimeout(1700);
+    await page.keyboard.up('KeyA');
+    await page.keyboard.up('KeyS');
+    await page.waitForTimeout(400);
+    await page.screenshot({ path: `${artifacts}monsters.png` });
+    expect(errors).toEqual([]);
+  });
+
+  it('walks by clicking the ground, and walks up to a clicked target and attacks it', async () => {
+    const page = await open('clicker');
+    await expect.poll(async () => (await probe(page))?.local ?? null, { timeout: 15_000 }).not.toBeNull();
+    await page.waitForTimeout(500);
+
+    // Click the ground: walk there in a straight line and stop (the order ends on arrival).
+    const start = (await probe(page))!.local!;
+    const goal = { x: start.x + 2, y: start.y, z: start.z - 4 };
+    const g = await screenOf(page, goal);
+    await page.mouse.click(g.x, g.y);
+    await expect.poll(async () => (await probe(page))!.moveOrder?.kind ?? null, { timeout: 2_000 }).toBe('point');
+    await expect.poll(async () => (await probe(page))!.moveOrder, { timeout: 6_000 }).toBeNull();
+    const reached = (await probe(page))!.local!;
+    expect(Math.hypot(reached.x - goal.x, reached.z - goal.z)).toBeLessThan(0.5);
+
+    // Click a dummy: lock it, walk into melee reach and swing once.
+    const id = 'dummy_jade';
+    const before = (await probe(page))!;
+    const at = before.targetPos[id]!;
+    const t = await screenOf(page, { ...at, y: at.y + 0.8 });
+    await page.mouse.click(t.x, t.y);
+    await expect.poll(async () => (await probe(page))!.locked, { timeout: 2_000 }).toBe(id);
+    await expect
+      .poll(async () => (await probe(page))!.acks.filter((a) => a.skill === 'attack' && a.ok).length, { timeout: 8_000 })
+      .toBeGreaterThan(before.acks.filter((a) => a.skill === 'attack' && a.ok).length);
+    const near = (await probe(page))!.local!;
+    expect(Math.hypot(near.x - at.x, near.z - at.z)).toBeLessThan(2.2);
+    await expect.poll(async () => (await probe(page))!.targets[id]!, { timeout: 5_000 }).toBeLessThan(before.targets[id]!);
+    // A single click swings once and then the order ends.
+    await expect.poll(async () => (await probe(page))!.moveOrder, { timeout: 3_000 }).toBeNull();
+    await page.screenshot({ path: `${artifacts}click_move.png` });
     expect(errors).toEqual([]);
   });
 });

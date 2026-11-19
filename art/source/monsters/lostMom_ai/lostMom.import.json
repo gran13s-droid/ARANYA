@@ -1,0 +1,6 @@
+{
+  "targetHeight": 30,
+  "rows": { "N": ["idle", "move", "attack", "hit", "death", null] },
+  "isolate": ["attack:3", "hit"],
+  "dropColors": ["FIRE"]
+}

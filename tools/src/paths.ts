@@ -6,6 +6,8 @@ export const REPO_ROOT = fileURLToPath(new URL('../../', import.meta.url));
 export const PALETTE_GPL = `${REPO_ROOT}art/palette/aranya-15.gpl`;
 /** Aseprite sources and their PNG + JSON exports (Art Bible 11.2). */
 export const CHARACTER_SOURCES = `${REPO_ROOT}art/source/characters`;
+/** Monster sources: mon_<species>.{aseprite | png + json}, and <species>_ai/ sheets for import-monster. */
+export const MONSTER_SOURCES = `${REPO_ROOT}art/source/monsters`;
 /** Generated runtime atlases; never edited by hand (Art Bible 11.2). */
 export const SPRITE_OUTPUT = `${REPO_ROOT}client/public/assets/sprites`;
 

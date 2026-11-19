@@ -19,6 +19,11 @@ export interface AtlasAnimation {
   holdLast: boolean;
 }
 
+/** `assets/sprites/index.json`: atlases the last `pnpm assets` built, so the client never requests a missing one. */
+export interface AtlasIndex {
+  atlases: string[];
+}
+
 export interface AtlasJson {
   frames: Record<string, { frame: AtlasRect }>;
   /** Keyed by tag name, e.g. `run_S`. */

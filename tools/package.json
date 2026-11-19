@@ -7,7 +7,8 @@
     "build-sprites": "tsx src/cli/buildSprites.ts",
     "gen-placeholder": "tsx src/cli/genPlaceholder.ts",
     "typecheck": "tsc -p tsconfig.json",
-    "import-hero": "tsx src/cli/importHero.ts"
+    "import-hero": "tsx src/cli/importHero.ts",
+    "import-monster": "tsx src/cli/importMonster.ts"
   },
   "dependencies": {
     "@aranya/shared": "workspace:*",

@@ -41,6 +41,30 @@ export type PlayerAnim = keyof typeof PLAYER_ANIMS;
 /** Player frame size in pixels (Art Bible 4.2). */
 export const PLAYER_FRAME_PX = 64;
 
+/**
+ * Small monster animations (Art Bible 5.4: idle 4, move 4, attack 5 with the
+ * hit on frame 3, hit 2, death/purify 5). Durations are provisional. Attack
+ * timing comes from the server telegraph: frames 1-2 hold during the wind-up
+ * and frame 3 shows when the attack lands.
+ */
+export const MONSTER_ANIMS = {
+  idle: { frames: 4, durationMs: 640, loop: true, grounded: true },
+  move: { frames: 4, durationMs: 480, loop: true, grounded: true },
+  attack: { frames: 5, durationMs: 500, loop: false, impactFrame: 3, grounded: true },
+  hit: { frames: 2, durationMs: 200, loop: false },
+  death: { frames: 5, durationMs: 750, loop: false, holdLast: true },
+} as const satisfies Record<string, AnimSpec>;
+
+export type MonsterAnim = keyof typeof MONSTER_ANIMS;
+
+/** Small monster frame size in pixels (Art Bible 4.2). */
+export const MONSTER_FRAME_PX = 48;
+
+/** Atlas name of a monster species, built from art/source/monsters/mon_<species>.* */
+export function monsterAtlasName(species: string): string {
+  return `mon_${species}`;
+}
+
 /** Time from animation start to the impact frame, assuming evenly timed frames. */
 export function impactMs(spec: AnimSpec): number | null {
   if (spec.impactFrame === undefined) return null;

@@ -45,22 +45,31 @@ export interface ProjectileEndEvent {
   hit: string | null;
 }
 
-export type Axis = -1 | 0 | 1;
+/**
+ * Largest movement axis value. Keys send -1/0/1; click-to-move sends a
+ * direction quantized to integers in [-MOVE_AXIS_MAX, MOVE_AXIS_MAX] (about
+ * 0.9° steps). Movement normalizes (mx, mz), so the magnitude never changes
+ * speed: a larger value cannot be used as a speed hack.
+ */
+export const MOVE_AXIS_MAX = 64;
+
+/** Integer in [-MOVE_AXIS_MAX, MOVE_AXIS_MAX]; only the direction of (mx, mz) matters. */
+export type Axis = number;
 
 /** Sequence numbers are synced back as uint32 (server/src/state.ts), so they must fit in it. */
 export const MAX_INPUT_SEQ = 0xffff_ffff;
 
 /**
  * Movement intent for one simulation tick. The client never sends positions,
- * only which direction keys are held and whether dodge/lunge was pressed
+ * only the direction it wants to walk (keys or click-to-move) and whether dodge/lunge was pressed
  * (server-authoritative movement).
  */
 export interface InputMessage {
   /** Monotonic per-client sequence number, used for reconciliation. */
   seq: number;
-  /** East (+1) / west (-1). */
+  /** East (+) / west (-). */
   mx: Axis;
-  /** North (+1) / south (-1). */
+  /** North (+) / south (-). */
   mz: Axis;
   /** 0 none, 1 dodge, 2 lunge (see MotionAct). */
   act?: 0 | 1 | 2;
@@ -121,7 +130,7 @@ export interface TelegraphEvent {
 }
 
 function isAxis(v: unknown): v is Axis {
-  return v === -1 || v === 0 || v === 1;
+  return typeof v === 'number' && Number.isInteger(v) && Math.abs(v) <= MOVE_AXIS_MAX;
 }
 
 function isSeq(v: unknown): v is number {

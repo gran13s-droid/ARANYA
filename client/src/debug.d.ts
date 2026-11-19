@@ -1,4 +1,5 @@
 import type { CastAck, FacingDir, PlayerAnim, Vec3 } from '@aranya/shared';
+import type { MoveOrder } from './input/clickMove.ts';
 
 declare global {
   interface Window {
@@ -21,11 +22,20 @@ declare global {
       telegraphs: number;
       /** Soft-locked target id. */
       locked: string | null;
+      /** Rendered position of every living target. */
+      targetPos: Record<string, Vec3>;
+      /** Monsters drawn as pixel sprites, and each one's current animation. */
+      monsterSprites: number;
+      monsterAnims: Record<string, string>;
+      /** Current click-to-move order. */
+      moveOrder: MoveOrder | null;
       /** Enemy projectiles in flight. */
       projectiles: number;
       /** Last cast acknowledgements from the server. */
       acks: (CastAck & { t: number })[];
     };
+    /** Dev-only: world point to CSS pixel on the page (e2e clicks). */
+    __aranyaProject?: (x: number, y: number, z: number) => { x: number; y: number };
   }
 }
 

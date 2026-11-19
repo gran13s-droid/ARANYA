@@ -122,10 +122,11 @@ function downscaleMode(src: Image, scale: number, alphaThreshold: number, palett
   return out;
 }
 
-/** Removes opaque islands smaller than `minPixels` (bits of neighbouring cells, glow specks). */
-function despeckle(img: Image, minPixels: number): void {
+/** 8-connected islands of opaque pixels, as lists of pixel indices. */
+function islands(img: Image): number[][] {
   const { width: w, height: h, data } = img;
   const seen = new Uint8Array(w * h);
+  const out: number[][] = [];
   for (let start = 0; start < w * h; start++) {
     if (seen[start] || data[start * 4 + 3] !== 255) continue;
     const island: number[] = [];
@@ -147,7 +148,22 @@ function despeckle(img: Image, minPixels: number): void {
         }
       }
     }
-    if (island.length < minPixels) for (const p of island) data.set([0, 0, 0, 0], p * 4);
+    out.push(island);
+  }
+  return out;
+}
+
+/** Removes opaque islands smaller than `minPixels` (bits of neighbouring cells, glow specks). */
+function despeckle(img: Image, minPixels: number): void {
+  for (const island of islands(img)) if (island.length < minPixels) for (const p of island) img.data.set([0, 0, 0, 0], p * 4);
+}
+
+/** Deletes pixels of the named palette colors. */
+function dropColors(img: Image, names: readonly string[], palette: readonly PaletteColor[]): void {
+  const keys = new Set(palette.filter((c) => names.includes(c.name)).map((c) => (c.r << 16) | (c.g << 8) | c.b));
+  for (let i = 0; i < img.width * img.height; i++) {
+    const d = img.data;
+    if (d[i * 4 + 3] === 255 && keys.has((d[i * 4]! << 16) | (d[i * 4 + 1]! << 8) | d[i * 4 + 2]!)) d.set([0, 0, 0, 0], i * 4);
   }
 }
 
@@ -169,6 +185,7 @@ export function convertFrame(src: Image, opts: ImportOptions, palette: readonly 
       small.data.set([c.r, c.g, c.b, 255], i * 4);
     }
   }
+  if (opts.dropColors?.length) dropColors(small, opts.dropColors, palette);
   despeckle(small, opts.minIslandPx ?? 8);
 
   let lowest = -1;

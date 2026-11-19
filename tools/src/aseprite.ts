@@ -39,6 +39,8 @@ export interface ImportOptions {
   downsample?: 'mode' | 'average';
   /** Opaque islands smaller than this are removed (default 8 px). */
   minIslandPx?: number;
+  /** Palette colors (by name) to delete after conversion, e.g. FIRE hit marks on a monster that has no red. */
+  dropColors?: string[];
 }
 
 export interface AseJson {

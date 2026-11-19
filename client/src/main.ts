@@ -1,4 +1,4 @@
-import { Engine, PointerEventTypes, SceneInstrumentation } from '@babylonjs/core';
+import { Engine, Matrix, PointerEventTypes, SceneInstrumentation, Vector3 } from '@babylonjs/core';
 import { Client } from '@colyseus/sdk';
 import {
   CAST_SKILLS,
@@ -12,6 +12,7 @@ import {
   TICK_MS,
   ZONE_ROOM,
   hitDelayMs,
+  monsterAtlasName,
   type CastAck,
   type CastStarted,
   type Element,
@@ -29,15 +30,18 @@ import { DamageNumbers } from './fx/damageNumbers.ts';
 import { Projectiles } from './fx/projectiles.ts';
 import { PurifyBursts } from './fx/purify.ts';
 import { Telegraphs } from './fx/telegraphs.ts';
-import { SoftLock } from './combat/softLock.ts';
+import { SoftLock, aimAt } from './combat/softLock.ts';
 import { t, type MessageKey } from './i18n.ts';
+import { ClickMove, groundHit } from './input/clickMove.ts';
 import { Keyboard } from './input/keyboard.ts';
+import { MoveMarker } from './fx/moveMarker.ts';
 import { InterpolationBuffer } from './net/interpolation.ts';
 import { PredictedPlayer } from './net/prediction.ts';
 import { color, type PaletteName } from './palette.ts';
 import { CharacterLayer, type CharacterSprite } from './sprites/characterLayer.ts';
 import { facingFromMove } from './sprites/facing.ts';
-import { loadAtlas } from './sprites/loadAtlas.ts';
+import { listAtlases, loadAtlas } from './sprites/loadAtlas.ts';
+import { MonsterSprites } from './sprites/monsterSprites.ts';
 import { DODGE_KEY, HOTBAR_KEYS, Hud, type HudTarget } from './ui/hud.ts';
 import { TargetViews, type NetTarget, type TargetInfo } from './world/targets.ts';
 import { createWorld } from './world/world.ts';
@@ -63,8 +67,6 @@ interface NetState {
 
 const MAX_TICKS_PER_FRAME = 5;
 const CHARACTER_ATLAS = 'chr_placeholder';
-/** Holding the left mouse button this long starts continuous attacks (a shorter click only locks). */
-const HOLD_TO_ATTACK_MS = 200;
 /** Hit stop on the attacker when its hit is confirmed (ROADMAP 1.2). */
 const HIT_STOP_MS = 70;
 
@@ -92,6 +94,8 @@ const targetViews = new TargetViews(world.scene);
 const projectiles = new Projectiles(world.scene);
 const purify = new PurifyBursts(world.scene);
 const softLock = new SoftLock(world.scene, targetViews);
+const clickMove = new ClickMove();
+const moveMarker = new MoveMarker(world.scene);
 const hud = new Hud(hudEl);
 
 /** Display name of a dummy or monster (i18n). */
@@ -122,6 +126,16 @@ async function start(): Promise<void> {
   statusEl.textContent = t('connecting');
   const { atlas, imageUrl } = await loadAtlas(CHARACTER_ATLAS);
   const layer = new CharacterLayer(world.scene, level, atlas, imageUrl);
+  // Monster sprites (48 px, tracker M-01..M-03); species without an atlas keep the low-poly placeholder.
+  const built = await listAtlases();
+  const monsterAtlases = new Map<string, Awaited<ReturnType<typeof loadAtlas>>>();
+  await Promise.all(
+    Object.keys(MONSTERS)
+      .filter((species) => built.has(monsterAtlasName(species)))
+      .map(async (species) => monsterAtlases.set(species, await loadAtlas(monsterAtlasName(species)))),
+  );
+  const monsterSprites = new MonsterSprites(world.scene, monsterAtlases);
+  targetViews.useSprites(monsterSprites);
   // HUD portrait: the hero's first idle frame facing the camera (placeholder for a painted face, tracker U-03).
   const faceKey = atlas.animations['idle_S']?.frames[0];
   const faceRect = faceKey ? atlas.frames[faceKey]?.frame : undefined;
@@ -161,11 +175,15 @@ async function start(): Promise<void> {
     r.sprite.animator.facing = facingFromMove(evt.fx, evt.fz, r.sprite.animator.facing);
     if (evt.anim !== 'idle' && evt.anim !== 'walk' && evt.anim !== 'run') r.sprite.animator.play(evt.anim);
   });
-  room.onMessage(Msg.Telegraph, (evt: TelegraphEvent) => telegraphs.show(evt));
+  room.onMessage(Msg.Telegraph, (evt: TelegraphEvent) => {
+    telegraphs.show(evt);
+    targetViews.windup(evt.source, evt.durationMs);
+  });
   room.onMessage(Msg.Projectile, (evt: ProjectileEvent) => projectiles.spawn(evt));
   room.onMessage(Msg.ProjectileEnd, (evt: ProjectileEndEvent) => projectiles.end(evt));
   room.onMessage(Msg.Hits, (hits: HitEvent[]) => {
     for (const h of hits) {
+      if (h.kind === 'damage') targetViews.hit(h.target);
       if (h.kind === 'death') {
         purify.show(h);
         continue;
@@ -272,21 +290,59 @@ async function start(): Promise<void> {
         numbersShown: numbers.spawned,
         telegraphs: telegraphs.count,
         locked: softLock.selected,
+        moveOrder: clickMove.order,
+        monsterSprites: monsterSprites.count,
+        monsterAnims: targetViews.spriteAnims(),
+        targetPos: Object.fromEntries(targetViews.all().map((tg) => [tg.id, tg.pos])),
         projectiles: projectiles.count,
         acks: ackLog.slice(-10),
       };
     };
+    // World point -> CSS pixel on the page, so e2e can click the ground or a target.
+    window.__aranyaProject = (x: number, y: number, z: number) => {
+      const cam = world.scene.activeCamera!;
+      const viewport = cam.viewport.toGlobal(engine.getRenderWidth(), engine.getRenderHeight());
+      const p = Vector3.Project(new Vector3(x, y, z), Matrix.Identity(), world.scene.getTransformMatrix(), viewport);
+      const k = engine.getHardwareScalingLevel();
+      return { x: p.x * k, y: p.y * k };
+    };
   }
 
-  // Left mouse: a click locks the target under the cursor (SoftLock); holding it attacks
-  // continuously. tryCast() refuses while a swing plays, so this just chains the combo.
-  let mouseHeldSince: number | null = null;
+  // Left mouse (GDD 4.3): click the ground to walk there, holding steers towards the cursor.
+  // Click a monster to lock it (SoftLock), walk into reach and attack once; holding keeps
+  // attacking (tryCast() refuses while a swing plays, so this just chains the combo).
+  let mouseDown = false;
+  /** One attack still owed to a clicked target once it is in reach. */
+  let pendingAttack = false;
+  const groundUnderCursor = (): Vec3 | null => {
+    const ray = world.scene.createPickingRay(world.scene.pointerX, world.scene.pointerY, Matrix.Identity(), world.scene.activeCamera);
+    return groundHit(level, ray.origin, ray.direction);
+  };
   world.scene.onPointerObservable.add((info) => {
     if ((info.event as PointerEvent).button !== 0) return;
-    if (info.type === PointerEventTypes.POINTERDOWN) mouseHeldSince = performance.now();
-    else if (info.type === PointerEventTypes.POINTERUP) mouseHeldSince = null;
+    if (info.type === PointerEventTypes.POINTERUP) {
+      mouseDown = false;
+      return;
+    }
+    if (info.type !== PointerEventTypes.POINTERDOWN) return;
+    mouseDown = true;
+    if (localDead) return;
+    const id = TargetViews.idOf(info.pickInfo?.pickedMesh);
+    if (id && (targetViews.get(id)?.hp ?? 0) > 0) {
+      clickMove.chase(id);
+      pendingAttack = true;
+      return;
+    }
+    pendingAttack = false;
+    const p = groundUnderCursor();
+    if (p) clickMove.moveTo(p);
   });
-  window.addEventListener('blur', () => (mouseHeldSince = null));
+  window.addEventListener('blur', () => (mouseDown = false));
+  /** Live position of a chased target, or null once it is gone or dead. */
+  const chasePos = (id: string): Vec3 | null => {
+    const tg = targetViews.get(id);
+    return tg && tg.hp > 0 ? tg.pos : null;
+  };
 
   // Fixed 20 Hz input/prediction loop driven by the render loop's accumulator.
   let accumulator = 0;
@@ -305,8 +361,19 @@ async function start(): Promise<void> {
           combat.tryCast(skill, aim, mine?.resource ?? 0, localSprite, now);
         }
       }
-      if (mouseHeldSince !== null && now - mouseHeldSince >= HOLD_TO_ATTACK_MS) {
-        combat.tryCast('attack', aim, mine?.resource ?? 0, localSprite, now);
+      // Click-to-move: holding on the ground keeps steering towards the cursor.
+      if (mouseDown && !clickMove.chasing) {
+        const p = groundUnderCursor();
+        if (p && clickMove.order?.kind === 'point') Object.assign(clickMove.order, { x: p.x, y: p.y, z: p.z });
+        else if (p && !clickMove.order) clickMove.moveTo(p);
+      }
+      // Clicked target in reach: attack once, or keep attacking while the button is held.
+      const chased = clickMove.chasing ? targetViews.get(clickMove.chasing) : null;
+      if (chased && clickMove.inReach(player.current, chased.pos)) {
+        if ((pendingAttack || mouseDown) && combat.tryCast('attack', aimAt(chased, player.current) ?? aim, mine?.resource ?? 0, localSprite, now)) {
+          pendingAttack = false;
+        }
+        if (!pendingAttack && !mouseDown) clickMove.cancel();
       }
     }
 
@@ -314,7 +381,13 @@ async function start(): Promise<void> {
     while (accumulator >= TICK_MS) {
       accumulator -= TICK_MS;
       if (player) {
-        const { mx, mz } = localDead ? { mx: 0 as const, mz: 0 as const } : keyboard.axes();
+        // Keys always win over click-to-move and cancel its order.
+        const keys = keyboard.axes();
+        if (localDead || keys.mx !== 0 || keys.mz !== 0) {
+          clickMove.cancel();
+          pendingAttack = false;
+        }
+        const { mx, mz } = localDead ? { mx: 0, mz: 0 } : clickMove.order ? clickMove.tick(player.current, chasePos) : keys;
         let act: MotionAct = MotionAct.None;
         if (!localDead && keyboard.consume(DODGE_KEY)) act = MotionAct.Dodge;
         else if (!localDead && keyboard.consume(HOTBAR_KEYS.lunge.code)) act = MotionAct.Lunge;
@@ -356,6 +429,7 @@ async function start(): Promise<void> {
     purify.update(dt);
     targetViews.update(dt, now);
     softLock.update();
+    moveMarker.update(dt, clickMove.order?.kind === 'point' ? clickMove.order : null);
     const locked = softLock.target();
     hud.updateTarget(locked ? hudTarget(locked) : null);
     bots?.update(dt);
