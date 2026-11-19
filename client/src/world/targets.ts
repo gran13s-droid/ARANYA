@@ -1,7 +1,12 @@
-import { Color3, Mesh, MeshBuilder, StandardMaterial, TransformNode, type AbstractMesh, type Scene } from '@babylonjs/core';
-import { INTERPOLATION_DELAY_MS, MONSTERS, type Element, type MonsterId, type Vec3 } from '@aranya/shared';
+import { Color3, Mesh, MeshBuilder, StandardMaterial, Texture, TransformNode, type AbstractMesh, type Scene } from '@babylonjs/core';
+import { INTERPOLATION_DELAY_MS, MONSTERS, PPU, type Element, type MonsterId, type Vec3 } from '@aranya/shared';
 import { InterpolationBuffer } from '../net/interpolation.ts';
 import { color, type PaletteName } from '../palette.ts';
+import { WORLD_BAR, worldBarFrame } from '../ui/pixelArt.ts';
+
+/** World HP bar sizes in meters: 1 texel = 1/PPU m, so it reads as pixel art next to sprites. */
+const TEXEL = 1 / PPU;
+const BAR_TRACK_M = WORLD_BAR.trackW * TEXEL;
 
 /** Synced target fields (server/src/state.ts TargetState). */
 export interface NetTarget {
@@ -36,6 +41,7 @@ export interface TargetInfo {
   id: string;
   kind: string;
   species: string;
+  element: string;
   pos: Vec3;
   hp: number;
   maxHp: number;
@@ -66,6 +72,23 @@ export class TargetViews {
       }
       this.mats.set(key, m);
     }
+    return m;
+  }
+
+  private frameMat: StandardMaterial | null = null;
+
+  /** Shared material for every world HP bar frame (one texture, NEAREST, cut-out alpha). */
+  private barFrameMat(): StandardMaterial {
+    if (this.frameMat) return this.frameMat;
+    const tex = new Texture(worldBarFrame(), this.scene, true, true, Texture.NEAREST_SAMPLINGMODE);
+    tex.hasAlpha = true;
+    const m = new StandardMaterial('target_barFrame', this.scene);
+    m.diffuseTexture = tex;
+    m.emissiveTexture = tex;
+    m.useAlphaFromDiffuseTexture = false;
+    m.specularColor = Color3.Black();
+    m.disableLighting = true;
+    this.frameMat = m;
     return m;
   }
 
@@ -145,9 +168,12 @@ export class TargetViews {
     const ring = this.part(id, MeshBuilder.CreateTorus(`ring_${id}`, { diameter: isMonster ? 0.9 : 1.1, thickness: 0.06, tessellation: 16 }, s), root, ELEMENT_COLOR[t.element as Element] ?? 'STONE', true);
     ring.position.y = 0.05;
 
-    const barBg = MeshBuilder.CreatePlane(`barBg_${id}`, { width: 1.0, height: 0.1 }, s);
-    barBg.material = this.mat('INK', true);
-    const barFill = MeshBuilder.CreatePlane(`barFill_${id}`, { width: 0.96, height: 0.06 }, s);
+    // Gold frame with an arrow tip (UI concept, reference 2) + a FIRE fill over its track.
+    const barBg = MeshBuilder.CreatePlane(`barBg_${id}`, { width: WORLD_BAR.w * TEXEL, height: WORLD_BAR.h * TEXEL }, s);
+    barBg.material = this.barFrameMat();
+    // Frame center is 1 texel right of the track center (2 px left cap, 4 px arrow tip).
+    barBg.position.x = (WORLD_BAR.w / 2 - WORLD_BAR.trackX - WORLD_BAR.trackW / 2) * TEXEL;
+    const barFill = MeshBuilder.CreatePlane(`barFill_${id}`, { width: BAR_TRACK_M, height: WORLD_BAR.trackH * TEXEL }, s);
     barFill.material = this.mat('FIRE', true);
     barFill.position.z = -0.01;
     const bar = new TransformNode(`bar_${id}`, s);
@@ -189,7 +215,7 @@ export class TargetViews {
       v.body.rotation.x = t.hp === 0 ? -1.3 : t.stunned ? -0.35 : 0;
       const k = t.maxHp > 0 ? t.hp / t.maxHp : 0;
       v.barFill.scaling.x = Math.max(0.001, k);
-      v.barFill.position.x = -(1 - k) * 0.48;
+      v.barFill.position.x = -(1 - k) * (BAR_TRACK_M / 2);
     }
   }
 
@@ -197,7 +223,7 @@ export class TargetViews {
     const v = this.visuals.get(id);
     if (!v) return null;
     const t = v.last;
-    return { id, kind: t.kind, species: t.species, pos: { x: v.root.position.x, y: v.root.position.y, z: v.root.position.z }, hp: t.hp, maxHp: t.maxHp };
+    return { id, kind: t.kind, species: t.species, element: t.element, pos: { x: v.root.position.x, y: v.root.position.y, z: v.root.position.z }, hp: t.hp, maxHp: t.maxHp };
   }
 
   all(): TargetInfo[] {

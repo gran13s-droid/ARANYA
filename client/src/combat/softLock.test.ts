@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { TargetInfo } from '../world/targets.ts';
 import { LOCK_RANGE, aimAt, nextTarget } from './softLock.ts';
 
-const t = (id: string, x: number, z: number, hp = 100): TargetInfo => ({ id, kind: 'monster', species: 'lostMom', pos: { x, y: 0, z }, hp, maxHp: 100 });
+const t = (id: string, x: number, z: number, hp = 100): TargetInfo => ({ id, kind: 'monster', species: 'lostMom', element: 'jade', pos: { x, y: 0, z }, hp, maxHp: 100 });
 const me = { x: 0, y: 0, z: 0 };
 
 describe('soft lock (GDD 4.3)', () => {

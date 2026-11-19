@@ -4,6 +4,7 @@ import {
   CAST_SKILLS,
   INTERPOLATION_DELAY_MS,
   LUNGE_CD_TICKS,
+  MONSTERS,
   MotionAct,
   Msg,
   SPIKE_LEVEL,
@@ -13,6 +14,8 @@ import {
   hitDelayMs,
   type CastAck,
   type CastStarted,
+  type Element,
+  type MonsterId,
   type HitEvent,
   type ProjectileEndEvent,
   type ProjectileEvent,
@@ -35,8 +38,8 @@ import { color, type PaletteName } from './palette.ts';
 import { CharacterLayer, type CharacterSprite } from './sprites/characterLayer.ts';
 import { facingFromMove } from './sprites/facing.ts';
 import { loadAtlas } from './sprites/loadAtlas.ts';
-import { DODGE_KEY, HOTBAR_KEYS, Hud } from './ui/hud.ts';
-import { TargetViews, type NetTarget } from './world/targets.ts';
+import { DODGE_KEY, HOTBAR_KEYS, Hud, type HudTarget } from './ui/hud.ts';
+import { TargetViews, type NetTarget, type TargetInfo } from './world/targets.ts';
 import { createWorld } from './world/world.ts';
 
 /** Shape of a player entry in the synced room state (server/src/state.ts). */
@@ -97,6 +100,12 @@ function targetName(kind: string, species: string): string {
   return t(kind === 'sparring' ? 'target.sparring' : 'target.dummy');
 }
 
+/** Locked-target panel data: monsters show their GDD 8.3 level; dummies have none. */
+function hudTarget(t: TargetInfo): HudTarget {
+  const monster = t.kind === 'monster' && t.species in MONSTERS ? MONSTERS[t.species as MonsterId] : null;
+  return { name: targetName(t.kind, t.species), hp: t.hp, maxHp: t.maxHp, level: monster?.level ?? null, element: (t.element as Element | '') || null };
+}
+
 const lerp = (a: Vec3, b: Vec3, k: number): Vec3 => ({
   x: a.x + (b.x - a.x) * k,
   y: a.y + (b.y - a.y) * k,
@@ -113,6 +122,14 @@ async function start(): Promise<void> {
   statusEl.textContent = t('connecting');
   const { atlas, imageUrl } = await loadAtlas(CHARACTER_ATLAS);
   const layer = new CharacterLayer(world.scene, level, atlas, imageUrl);
+  // HUD portrait: the hero's first idle frame facing the camera (placeholder for a painted face, tracker U-03).
+  const faceKey = atlas.animations['idle_S']?.frames[0];
+  const faceRect = faceKey ? atlas.frames[faceKey]?.frame : undefined;
+  if (faceRect) {
+    const face = new Image();
+    face.onload = () => hud.setPortrait(face, faceRect, atlas.meta.pivot.y);
+    face.src = imageUrl;
+  }
 
   const params = new URLSearchParams(location.search);
   const botCount = import.meta.env.DEV ? Math.min(Number(params.get('bots') ?? 0) || 0, layer.capacity - 16) : 0;
@@ -340,7 +357,7 @@ async function start(): Promise<void> {
     targetViews.update(dt, now);
     softLock.update();
     const locked = softLock.target();
-    hud.updateTarget(locked ? { name: targetName(locked.kind, locked.species), hp: locked.hp, maxHp: locked.maxHp } : null);
+    hud.updateTarget(locked ? hudTarget(locked) : null);
     bots?.update(dt);
     world.scene.render();
   });
