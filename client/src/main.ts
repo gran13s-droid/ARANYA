@@ -1,8 +1,7 @@
-import { Engine, SceneInstrumentation } from '@babylonjs/core';
+import { Engine, PointerEventTypes, SceneInstrumentation } from '@babylonjs/core';
 import { Client } from '@colyseus/sdk';
 import {
   CAST_SKILLS,
-  DODGE_CD_TICKS,
   INTERPOLATION_DELAY_MS,
   LUNGE_CD_TICKS,
   MotionAct,
@@ -15,6 +14,8 @@ import {
   type CastAck,
   type CastStarted,
   type HitEvent,
+  type ProjectileEndEvent,
+  type ProjectileEvent,
   type Motion,
   type TelegraphEvent,
   type Vec3,
@@ -22,8 +23,11 @@ import {
 import { LocalCombat } from './combat/localCombat.ts';
 import { BotSwarm } from './dev/bots.ts';
 import { DamageNumbers } from './fx/damageNumbers.ts';
+import { Projectiles } from './fx/projectiles.ts';
+import { PurifyBursts } from './fx/purify.ts';
 import { Telegraphs } from './fx/telegraphs.ts';
-import { t } from './i18n.ts';
+import { SoftLock } from './combat/softLock.ts';
+import { t, type MessageKey } from './i18n.ts';
 import { Keyboard } from './input/keyboard.ts';
 import { InterpolationBuffer } from './net/interpolation.ts';
 import { PredictedPlayer } from './net/prediction.ts';
@@ -31,7 +35,7 @@ import { color, type PaletteName } from './palette.ts';
 import { CharacterLayer, type CharacterSprite } from './sprites/characterLayer.ts';
 import { facingFromMove } from './sprites/facing.ts';
 import { loadAtlas } from './sprites/loadAtlas.ts';
-import { HOTBAR_KEYS, Hud } from './ui/hud.ts';
+import { DODGE_KEY, HOTBAR_KEYS, Hud } from './ui/hud.ts';
 import { TargetViews, type NetTarget } from './world/targets.ts';
 import { createWorld } from './world/world.ts';
 
@@ -56,6 +60,8 @@ interface NetState {
 
 const MAX_TICKS_PER_FRAME = 5;
 const CHARACTER_ATLAS = 'chr_placeholder';
+/** Holding the left mouse button this long starts continuous attacks (a shorter click only locks). */
+const HOLD_TO_ATTACK_MS = 200;
 /** Hit stop on the attacker when its hit is confirmed (ROADMAP 1.2). */
 const HIT_STOP_MS = 70;
 
@@ -80,7 +86,16 @@ instrumentation.captureFrameTime = true;
 const numbers = new DamageNumbers(world.scene);
 const telegraphs = new Telegraphs(world.scene);
 const targetViews = new TargetViews(world.scene);
+const projectiles = new Projectiles(world.scene);
+const purify = new PurifyBursts(world.scene);
+const softLock = new SoftLock(world.scene, targetViews);
 const hud = new Hud(hudEl);
+
+/** Display name of a dummy or monster (i18n). */
+function targetName(kind: string, species: string): string {
+  if (kind === 'monster') return t(`monster.${species}` as MessageKey);
+  return t(kind === 'sparring' ? 'target.sparring' : 'target.dummy');
+}
 
 const lerp = (a: Vec3, b: Vec3, k: number): Vec3 => ({
   x: a.x + (b.x - a.x) * k,
@@ -130,8 +145,14 @@ async function start(): Promise<void> {
     if (evt.anim !== 'idle' && evt.anim !== 'walk' && evt.anim !== 'run') r.sprite.animator.play(evt.anim);
   });
   room.onMessage(Msg.Telegraph, (evt: TelegraphEvent) => telegraphs.show(evt));
+  room.onMessage(Msg.Projectile, (evt: ProjectileEvent) => projectiles.spawn(evt));
+  room.onMessage(Msg.ProjectileEnd, (evt: ProjectileEndEvent) => projectiles.end(evt));
   room.onMessage(Msg.Hits, (hits: HitEvent[]) => {
     for (const h of hits) {
+      if (h.kind === 'death') {
+        purify.show(h);
+        continue;
+      }
       // Each player only sees numbers for hits they dealt or took (Art Bible 7.6).
       if (h.source !== me && h.target !== me) {
         if (h.kind === 'damage') remotes.get(h.target)?.sprite.animator.play('hit');
@@ -154,6 +175,9 @@ async function start(): Promise<void> {
           break;
         case 'heal':
           numbers.show(h, `+${h.amount}`, 'JADE');
+          break;
+        case 'mana':
+          numbers.show(h, `+${h.amount}`, 'GOLD');
           break;
         case 'parry':
           localSprite?.animator.freeze(120);
@@ -204,7 +228,7 @@ async function start(): Promise<void> {
         remotes.delete(id);
       }
     }
-    targetViews.sync(state.targets);
+    targetViews.sync(state.targets, performance.now());
     statusEl.textContent = t('connected', { count: state.players.size });
   });
 
@@ -230,10 +254,22 @@ async function start(): Promise<void> {
         targets,
         numbersShown: numbers.spawned,
         telegraphs: telegraphs.count,
+        locked: softLock.selected,
+        projectiles: projectiles.count,
         acks: ackLog.slice(-10),
       };
     };
   }
+
+  // Left mouse: a click locks the target under the cursor (SoftLock); holding it attacks
+  // continuously. tryCast() refuses while a swing plays, so this just chains the combo.
+  let mouseHeldSince: number | null = null;
+  world.scene.onPointerObservable.add((info) => {
+    if ((info.event as PointerEvent).button !== 0) return;
+    if (info.type === PointerEventTypes.POINTERDOWN) mouseHeldSince = performance.now();
+    else if (info.type === PointerEventTypes.POINTERUP) mouseHeldSince = null;
+  });
+  window.addEventListener('blur', () => (mouseHeldSince = null));
 
   // Fixed 20 Hz input/prediction loop driven by the render loop's accumulator.
   let accumulator = 0;
@@ -244,10 +280,16 @@ async function start(): Promise<void> {
     const player = local;
 
     if (player && !localDead) {
+      if (keyboard.consume('Tab')) softLock.cycle(player.current);
+      // Soft lock (GDD 4.3): aim at the locked target when it is in range, else where we face.
+      const aim = softLock.aim(player.current) ?? { fx: player.current.fx, fz: player.current.fz };
       for (const skill of CAST_SKILLS) {
         if (keyboard.consume(HOTBAR_KEYS[skill].code)) {
-          combat.tryCast(skill, { fx: player.current.fx, fz: player.current.fz }, mine?.resource ?? 0, localSprite, now);
+          combat.tryCast(skill, aim, mine?.resource ?? 0, localSprite, now);
         }
+      }
+      if (mouseHeldSince !== null && now - mouseHeldSince >= HOLD_TO_ATTACK_MS) {
+        combat.tryCast('attack', aim, mine?.resource ?? 0, localSprite, now);
       }
     }
 
@@ -257,7 +299,7 @@ async function start(): Promise<void> {
       if (player) {
         const { mx, mz } = localDead ? { mx: 0 as const, mz: 0 as const } : keyboard.axes();
         let act: MotionAct = MotionAct.None;
-        if (!localDead && keyboard.consume(HOTBAR_KEYS.dodge.code)) act = MotionAct.Dodge;
+        if (!localDead && keyboard.consume(DODGE_KEY)) act = MotionAct.Dodge;
         else if (!localDead && keyboard.consume(HOTBAR_KEYS.lunge.code)) act = MotionAct.Lunge;
         lastIntent = { mx, mz };
         room.send(Msg.Input, player.applyLocal(mx, mz, act));
@@ -279,7 +321,7 @@ async function start(): Promise<void> {
           parry: combat.cooldownFraction('parry', now),
           ultimate: combat.cooldownFraction('ultimate', now),
           potion: combat.cooldownFraction('potion', now),
-          dodge: player.current.dodgeCdTicks / DODGE_CD_TICKS,
+          manaPotion: combat.cooldownFraction('manaPotion', now),
           lunge: player.current.lungeCdTicks / LUNGE_CD_TICKS,
         },
       });
@@ -293,6 +335,12 @@ async function start(): Promise<void> {
 
     numbers.update(dt);
     telegraphs.update(dt);
+    projectiles.update(dt);
+    purify.update(dt);
+    targetViews.update(dt, now);
+    softLock.update();
+    const locked = softLock.target();
+    hud.updateTarget(locked ? { name: targetName(locked.kind, locked.species), hp: locked.hp, maxHp: locked.maxHp } : null);
     bots?.update(dt);
     world.scene.render();
   });

@@ -2,6 +2,7 @@ import {
   INTERPOLATION_DELAY_MS,
   MotionAct,
   SWORDSMAN,
+  TICK_DT,
   SWORDSMAN_STATS,
   actionLockMs,
   computeDamage,
@@ -186,8 +187,15 @@ export class CombatWorld implements MonsterHost {
       nextAttackAt: this.clock.now() + SPARRING_ATTACK.periodMs,
       pendingAttack: null,
     };
+    if (spec.kind === 'monster' && spec.species) t.monster = createMonsterState(spec.species, spec.pos, this.clock.now());
     this.targets.set(t.id, t);
     return t;
+  }
+
+  /** Spawns a monster from MONSTERS (GDD 8.3) at a fixed spawn point; it respawns there. */
+  addMonster(id: string, species: MonsterId, pos: Vec3): CombatTarget {
+    const spec = createMonsterState(species, pos, 0).spec;
+    return this.addTarget({ id, kind: 'monster', species, pos: { ...pos }, elements: [...spec.elements], maxHp: spec.maxHp, def: spec.def, atk: spec.atk });
   }
 
   // ---------------------------------------------------------------- casts
@@ -230,6 +238,12 @@ export class CombatWorld implements MonsterHost {
       case 'stance': {
         const cd = startCooldown();
         p.stanceUntil = now + SWORDSMAN.stance.durationMs;
+        for (const t of this.targets.values()) {
+          if (!t.monster || t.hp <= 0) continue;
+          if (Math.hypot(t.pos.x - p.motion.x, t.pos.z - p.motion.z) > SWORDSMAN.stance.tauntRadius) continue;
+          t.monster.taunt = { id: p.id, until: p.stanceUntil };
+          t.monster.targetId = p.id;
+        }
         p.busyUntil = now + actionLockMs(SWORDSMAN.stance.anim);
         this.events.ack(playerId, { seq: msg.seq, skill: 'stance', ok: true, cooldownMs: cd });
         announce(SWORDSMAN.stance.anim);
@@ -265,6 +279,14 @@ export class CombatWorld implements MonsterHost {
         this.events.hits([{ source: playerId, target: playerId, kind: 'heal', amount: heal, crit: false, ...pos(p.motion) }]);
         return;
       }
+      case 'manaPotion': {
+        const cd = startCooldown();
+        const before = p.resource;
+        p.resource = Math.min(SWORDSMAN_STATS.resourceMax, p.resource + SWORDSMAN.manaPotion.restore);
+        this.events.ack(playerId, { seq: msg.seq, skill: 'manaPotion', ok: true, cooldownMs: cd });
+        this.events.hits([{ source: playerId, target: playerId, kind: 'mana', amount: p.resource - before, crit: false, ...pos(p.motion) }]);
+        return;
+      }
     }
   }
 
@@ -295,17 +317,23 @@ export class CombatWorld implements MonsterHost {
         },
         this.rng,
       );
-      this.damageTarget(t, dmg.amount, now);
       hits.push({ source: p.id, target: t.id, kind: 'damage', amount: dmg.amount, crit: dmg.crit, ...t.pos });
+      this.damageTarget(t, dmg.amount, now, p.id);
       if (opts.burn) t.burn = { until: now + SWORDSMAN.burn.durationMs, nextTickAt: now + SWORDSMAN.burn.tickMs, source: p.id };
     }
     if (hits.length > 0) this.events.hits(hits);
     return hits.length;
   }
 
-  private damageTarget(t: CombatTarget, amount: number, now: number): void {
+  private damageTarget(t: CombatTarget, amount: number, now: number, source?: string): void {
+    if (t.hp <= 0) return;
     t.hp = Math.max(0, t.hp - amount);
     t.lastHitAt = now;
+    if (t.monster) {
+      if (t.hp === 0) this.killMonster(t, now, source ?? null);
+      else if (source) onMonsterHurt(t as CombatTarget & { monster: MonsterState }, source, now);
+      return;
+    }
     if (t.hp === 0) {
       t.resetAt = now + DUMMY_BROKEN_MS;
       t.burn = null;
@@ -333,6 +361,7 @@ export class CombatWorld implements MonsterHost {
       t.history.push(now, t.pos);
       this.tickTarget(t, now);
     }
+    this.tickProjectiles();
   }
 
   /** ทะยานพยัคฆ์: targets touched during the lunge are stunned once (GDD 5.2). */
@@ -355,24 +384,32 @@ export class CombatWorld implements MonsterHost {
   }
 
   private tickTarget(t: CombatTarget, now: number): void {
+    if (t.monster) {
+      if (t.hp > 0) this.tickBurn(t, now);
+      tickMonster(this, t as CombatTarget & { monster: MonsterState }, now);
+      return;
+    }
     if (t.hp === 0) {
       if (now >= t.resetAt) t.hp = t.maxHp;
       return;
     }
     if (t.hp < t.maxHp && now - t.lastHitAt >= DUMMY_RESET_AFTER_IDLE_MS && !t.burn) t.hp = t.maxHp;
 
+    this.tickBurn(t, now);
+    if (t.kind === 'sparring') this.tickSparring(t, now);
+  }
+
+  private tickBurn(t: CombatTarget, now: number): void {
     if (t.burn) {
       if (now >= t.burn.until) t.burn = null;
       else if (now >= t.burn.nextTickAt) {
         const dmg = computeDamage({ atk: SWORDSMAN_STATS.atk, skillCoef: SWORDSMAN.burn.coefPerTick, def: t.def, attackElement: 'fire', targetElements: t.elements, critChance: 0 }, this.rng);
         const source = t.burn.source;
         t.burn.nextTickAt += SWORDSMAN.burn.tickMs;
-        this.damageTarget(t, dmg.amount, now);
         this.events.hits([{ source, target: t.id, kind: 'burn', amount: dmg.amount, crit: false, ...t.pos }]);
+        this.damageTarget(t, dmg.amount, now, source);
       }
     }
-
-    if (t.kind === 'sparring') this.tickSparring(t, now);
   }
 
   /** A target that swings back on a fixed rhythm with a telegraph, for testing dodge/parry/potion. */
@@ -400,47 +437,63 @@ export class CombatWorld implements MonsterHost {
       const { fx, fz } = t.pendingAttack;
       t.pendingAttack = null;
       t.nextAttackAt = now + SPARRING_ATTACK.periodMs;
-      this.enemyStrike(t, fx, fz, now);
+      this.hitPlayers(t.id, SPARRING_ATTACK.shape, t.pos, fx, fz, SPARRING_ATTACK.coef);
     }
   }
 
-  private enemyStrike(t: CombatTarget, fx: number, fz: number, now: number): void {
+  // ------------------------------------------------- enemy side (MonsterHost)
+
+  /**
+   * An enemy attack area lands: every living player inside takes damage unless
+   * dodging (i-frames, GDD 4.3) or parrying (counter 150%, GDD 5.2); sword
+   * stance reduces it (x0.7). Damage and ปราณดาบ gain are server-side only.
+   */
+  hitPlayers(attackerId: string, shape: HitShape, origin: Vec3, fx: number, fz: number, coef: number): void {
+    const attacker = this.targets.get(attackerId);
+    if (!attacker) return;
     const hits: HitEvent[] = [];
     for (const p of this.players.values()) {
-      if (p.dead || !inShape(SPARRING_ATTACK.shape, t.pos, fx, fz, p.motion)) continue;
-      if (isDodging(p.motion)) continue; // i-frames (GDD 4.3)
-      if (now <= p.parryUntil) {
-        // ปัดป้องสวนกลับ: no damage, counter for 150% ATK (GDD 5.2).
-        p.parryUntil = 0;
-        const counter = computeDamage({ atk: SWORDSMAN_STATS.atk, skillCoef: SWORDSMAN.parry.counterCoef, def: t.def, attackElement: SWORDSMAN.parry.element, targetElements: t.elements }, this.rng);
-        this.damageTarget(t, counter.amount, now);
-        hits.push({ source: p.id, target: p.id, kind: 'parry', amount: 0, crit: false, ...pos(p.motion) });
-        hits.push({ source: p.id, target: t.id, kind: 'damage', amount: counter.amount, crit: counter.crit, ...t.pos });
-        continue;
-      }
-      const dmg = computeDamage(
-        {
-          atk: t.atk,
-          skillCoef: SPARRING_ATTACK.coef,
-          def: SWORDSMAN_STATS.def,
-          attackElement: t.elements[0] ?? 'smoke',
-          targetElements: [SWORDSMAN_STATS.element],
-          defenseMult: now < p.stanceUntil ? SWORDSMAN.stance.damageTakenMult : 1,
-        },
-        this.rng,
-      );
-      p.hp = Math.max(0, p.hp - dmg.amount);
-      p.resource = Math.min(SWORDSMAN_STATS.resourceMax, p.resource + SWORDSMAN_STATS.resourceWhenHurt);
-      if (p.hp === 0) {
-        p.dead = true;
-        p.respawnAt = now + SWORDSMAN_STATS.respawnMs;
-      }
-      hits.push({ source: t.id, target: p.id, kind: 'damage', amount: dmg.amount, crit: dmg.crit, ...pos(p.motion) });
+      if (p.dead || !inShape(shape, origin, fx, fz, p.motion)) continue;
+      hits.push(...this.hitPlayer(p, attacker, coef));
     }
     if (hits.length) this.events.hits(hits);
   }
 
-  private nearestPlayer(from: Vec3, range: number): CombatPlayer | null {
+  private hitPlayer(p: CombatPlayer, attacker: CombatTarget, coef: number): HitEvent[] {
+    const now = this.clock.now();
+    if (isDodging(p.motion)) return [];
+    if (now <= p.parryUntil) {
+      // ปัดป้องสวนกลับ: no damage, counter for 150% ATK (GDD 5.2).
+      p.parryUntil = 0;
+      const counter = computeDamage({ atk: SWORDSMAN_STATS.atk, skillCoef: SWORDSMAN.parry.counterCoef, def: attacker.def, attackElement: SWORDSMAN.parry.element, targetElements: attacker.elements }, this.rng);
+      const out: HitEvent[] = [
+        { source: p.id, target: p.id, kind: 'parry', amount: 0, crit: false, ...pos(p.motion) },
+        { source: p.id, target: attacker.id, kind: 'damage', amount: counter.amount, crit: counter.crit, ...attacker.pos },
+      ];
+      this.damageTarget(attacker, counter.amount, now, p.id);
+      return out;
+    }
+    const dmg = computeDamage(
+      {
+        atk: attacker.atk,
+        skillCoef: coef,
+        def: SWORDSMAN_STATS.def,
+        attackElement: attacker.elements[0] ?? 'smoke',
+        targetElements: [SWORDSMAN_STATS.element],
+        defenseMult: now < p.stanceUntil ? SWORDSMAN.stance.damageTakenMult : 1,
+      },
+      this.rng,
+    );
+    p.hp = Math.max(0, p.hp - dmg.amount);
+    p.resource = Math.min(SWORDSMAN_STATS.resourceMax, p.resource + SWORDSMAN_STATS.resourceWhenHurt);
+    if (p.hp === 0) {
+      p.dead = true;
+      p.respawnAt = now + SWORDSMAN_STATS.respawnMs;
+    }
+    return [{ source: attacker.id, target: p.id, kind: 'damage', amount: dmg.amount, crit: dmg.crit, ...pos(p.motion) }];
+  }
+
+  nearestPlayer(from: Vec3, range: number): CombatPlayer | null {
     let best: CombatPlayer | null = null;
     let bestD = range;
     for (const p of this.players.values()) {
@@ -453,6 +506,76 @@ export class CombatWorld implements MonsterHost {
     }
     return best;
   }
+
+  playerPos(id: string): Vec3 | null {
+    const p = this.players.get(id);
+    return p && !p.dead ? p.motion : null;
+  }
+
+  telegraph(evt: TelegraphEvent): void {
+    this.events.telegraph(evt);
+  }
+
+  spawnProjectile(ownerId: string, from: Vec3, fx: number, fz: number, speed: number, range: number, coef: number): void {
+    const id = this.nextProjectileId++;
+    this.projectiles.push({ id, owner: ownerId, pos: { ...from }, fx, fz, speed, remaining: range, coef });
+    this.events.projectile({ id, source: ownerId, ...pos(from), vx: fx * speed, vz: fz * speed, range });
+  }
+
+  selfDestruct(id: string): void {
+    const t = this.targets.get(id);
+    if (t && t.hp > 0) this.killMonster(t, this.clock.now(), null);
+  }
+
+  private killMonster(t: CombatTarget, now: number, killer: string | null): void {
+    const m = t.monster!;
+    m.mode = 'dead';
+    m.respawnAt = now + m.spec.respawnMs;
+    m.windup = null;
+    m.flurry = null;
+    t.burn = null;
+    t.hp = 0;
+    // Monsters are purified, not destroyed (GDD pillar 1). Drops arrive with the inventory (Step 3.1).
+    this.events.hits([{ source: killer ?? t.id, target: t.id, kind: 'death', amount: 0, crit: false, ...pos(t.pos) }]);
+  }
+
+  /** Moves projectiles and tests the swept segment of this tick against every player (GDD 8.3). */
+  private tickProjectiles(): void {
+    for (let i = this.projectiles.length - 1; i >= 0; i--) {
+      const pr = this.projectiles[i]!;
+      const travel = Math.min(pr.remaining, pr.speed * TICK_DT);
+      const from = pr.pos;
+      const to = { x: from.x + pr.fx * travel, y: from.y, z: from.z + pr.fz * travel };
+      let hit: CombatPlayer | null = null;
+      for (const p of this.players.values()) {
+        if (p.dead || Math.abs(p.motion.y - from.y) > 1.5) continue;
+        if (segmentDistance(from, to, p.motion) <= PROJECTILE_RADIUS + PLAYER_HIT_RADIUS && !isDodging(p.motion)) {
+          hit = p;
+          break;
+        }
+      }
+      pr.pos = to;
+      pr.remaining -= travel;
+      const owner = this.targets.get(pr.owner);
+      if (hit && owner) {
+        const evts = this.hitPlayer(hit, owner, pr.coef);
+        if (evts.length) this.events.hits(evts);
+      }
+      if (hit || pr.remaining <= 1e-6) {
+        this.projectiles.splice(i, 1);
+        this.events.projectileEnd({ id: pr.id, hit: hit?.id ?? null });
+      }
+    }
+  }
+}
+
+/** Distance on the ground plane from point p to segment a-b. */
+function segmentDistance(a: Vec3, b: Vec3, p: Vec3): number {
+  const abx = b.x - a.x;
+  const abz = b.z - a.z;
+  const len2 = abx * abx + abz * abz;
+  const t = len2 === 0 ? 0 : Math.max(0, Math.min(1, ((p.x - a.x) * abx + (p.z - a.z) * abz) / len2));
+  return Math.hypot(a.x + abx * t - p.x, a.z + abz * t - p.z);
 }
 
 function pos(v: Vec3): Vec3 {

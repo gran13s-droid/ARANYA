@@ -133,10 +133,16 @@ describe.skipIf(!executablePath)('client in a real browser (2 tabs)', { timeout:
     await page.keyboard.down('KeyS');
     await expect.poll(async () => (await probe(page))!.local!.z, { timeout: 10_000 }).toBeLessThan(-12.4);
     await page.keyboard.up('KeyS');
-    const before = (await probe(page))!;
-    const full = Math.max(...Object.values(before.targets));
 
-    // Record the local animation inside the page (no round trips), then press J
+    // Soft lock (GDD 4.3): Tab locks the nearest target and shows the target panel.
+    await page.keyboard.press('Tab');
+    await expect.poll(async () => (await probe(page))!.locked, { timeout: 3_000 }).not.toBeNull();
+    await expect.poll(async () => page.locator('.hud-target').isVisible(), { timeout: 3_000 }).toBe(true);
+    const before = (await probe(page))!;
+    const lockedId = before.locked!;
+    const full = before.targets[lockedId]!;
+
+    // Record the local animation inside the page (no round trips), then press 1 (attack)
     // three times, each just after the previous swing ends and inside the combo window.
     await page.evaluate(() => {
       const seen = new Set<string>();
@@ -147,7 +153,7 @@ describe.skipIf(!executablePath)('client in a real browser (2 tabs)', { timeout:
       }, 20);
     });
     for (let i = 0; i < 3; i++) {
-      await page.keyboard.press('KeyJ');
+      await page.keyboard.press('Digit1');
       await page.waitForTimeout(420);
     }
     const anims = new Set(await page.evaluate(() => [...(window as unknown as { __anims: Set<string> }).__anims]));
@@ -158,7 +164,17 @@ describe.skipIf(!executablePath)('client in a real browser (2 tabs)', { timeout:
     expect(anims).toContain('attack3');
 
     await expect.poll(async () => (await probe(page))!.numbersShown, { timeout: 5_000 }).toBeGreaterThan(0);
-    await expect.poll(async () => Math.min(...Object.values((await probe(page))!.targets)), { timeout: 5_000 }).toBeLessThan(full);
+    // The locked target itself took the damage (attacks auto-aimed at it).
+    await expect.poll(async () => (await probe(page))!.targets[lockedId]!, { timeout: 5_000 }).toBeLessThan(full);
+
+    // Holding the left mouse button keeps attacking (several accepted attack casts in a row).
+    const acksBefore = (await probe(page))!.acks.filter((a) => a.skill === 'attack' && a.ok).length;
+    await page.waitForTimeout(800); // leave the combo window so the chain restarts cleanly
+    await page.mouse.move(640, 600);
+    await page.mouse.down();
+    await page.waitForTimeout(1600);
+    await page.mouse.up();
+    await expect.poll(async () => (await probe(page))!.acks.filter((a) => a.skill === 'attack' && a.ok).length - acksBefore, { timeout: 3_000 }).toBeGreaterThanOrEqual(3);
     expect(errors).toEqual([]);
   });
 });

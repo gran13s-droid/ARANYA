@@ -1,16 +1,19 @@
-import { HOTBAR, type SkillId } from '@aranya/shared';
+import { HOTBAR, type HotbarSkill } from '@aranya/shared';
 import { t } from '../i18n.ts';
 
-/** Default PC key for each hotbar slot (GDD 4.3 order). */
-export const HOTBAR_KEYS: Record<SkillId, { code: string; label: string }> = {
-  attack: { code: 'KeyJ', label: 'J' },
-  stance: { code: 'KeyK', label: 'K' },
-  lunge: { code: 'KeyL', label: 'L' },
-  parry: { code: 'KeyU', label: 'U' },
-  ultimate: { code: 'KeyI', label: 'I' },
-  dodge: { code: 'Space', label: '␣' },
-  potion: { code: 'KeyQ', label: 'Q' },
+/** PC keys for the hotbar slots 1-7 (GDD 4.3). Left mouse: click locks a target, hold attacks. */
+export const HOTBAR_KEYS: Record<HotbarSkill, { code: string; label: string }> = {
+  attack: { code: 'Digit1', label: '1' },
+  stance: { code: 'Digit2', label: '2' },
+  lunge: { code: 'Digit3', label: '3' },
+  parry: { code: 'Digit4', label: '4' },
+  ultimate: { code: 'Digit5', label: '5' },
+  potion: { code: 'Digit6', label: '6' },
+  manaPotion: { code: 'Digit7', label: '7' },
 };
+
+/** Dodge is not on the hotbar (GDD 4.3). */
+export const DODGE_KEY = 'Space';
 
 export interface HudState {
   hp: number;
@@ -19,7 +22,7 @@ export interface HudState {
   resourceMax: number;
   dead: boolean;
   /** 0..1 remaining cooldown per slot. */
-  cooldown: Partial<Record<SkillId, number>>;
+  cooldown: Partial<Record<HotbarSkill, number>>;
 }
 
 /**
@@ -31,7 +34,7 @@ export class Hud {
   private readonly hpText: HTMLSpanElement;
   private readonly resFill: HTMLDivElement;
   private readonly deadEl: HTMLDivElement;
-  private readonly slots = new Map<SkillId, { el: HTMLDivElement; shade: HTMLDivElement }>();
+  private readonly slots = new Map<HotbarSkill, { el: HTMLDivElement; shade: HTMLDivElement }>();
 
   constructor(root: HTMLElement) {
     root.innerHTML = '';
@@ -83,8 +86,29 @@ export class Hud {
     }
   }
 
+  private targetEl: HTMLDivElement | null = null;
+
+  /** Locked target panel (soft lock, GDD 4.3); null hides it. */
+  updateTarget(target: { name: string; hp: number; maxHp: number } | null): void {
+    if (!this.targetEl) {
+      this.targetEl = el('div', 'hud-target');
+      const name = el('span', 'hud-target-name');
+      const t = bar('', 'target');
+      this.targetEl.append(name, t.row);
+      document.body.append(this.targetEl);
+    }
+    const root = this.targetEl;
+    this.write('target', target ? `${target.name}|${target.hp}|${target.maxHp}` : '', () => {
+      root.style.display = target ? 'flex' : 'none';
+      if (!target) return;
+      (root.querySelector('.hud-target-name') as HTMLElement).textContent = target.name;
+      (root.querySelector('.hud-bar-fill') as HTMLElement).style.width = `${(100 * target.hp) / Math.max(1, target.maxHp)}%`;
+      (root.querySelector('.hud-bar-text') as HTMLElement).textContent = `${target.hp}/${target.maxHp}`;
+    });
+  }
+
   /** Brief red flash on a slot when the server rejected the cast. */
-  flash(skill: SkillId): void {
+  flash(skill: HotbarSkill): void {
     const slot = this.slots.get(skill)?.el;
     if (!slot) return;
     slot.classList.remove('rejected');

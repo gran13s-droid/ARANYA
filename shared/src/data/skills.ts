@@ -10,13 +10,17 @@ import { PLAYER_ANIMS, impactMs, type PlayerAnim } from './animations.ts';
  * so animation and damage can never drift apart (CLAUDE.md).
  */
 
-/** Hotbar order (GDD 4.3): attack | skill 2 | skill 3 | skill 4 | ultimate | dodge | potion. */
-export const HOTBAR = ['attack', 'stance', 'lunge', 'parry', 'ultimate', 'dodge', 'potion'] as const;
-export type SkillId = (typeof HOTBAR)[number];
+/**
+ * Hotbar keys 1-7 (GDD 4.3): attack | skill 2 | skill 3 | skill 4 | ultimate | HP potion | mana potion.
+ * Dodge is not on the hotbar; it has its own key (Space).
+ */
+export const HOTBAR = ['attack', 'stance', 'lunge', 'parry', 'ultimate', 'potion', 'manaPotion'] as const;
+export type HotbarSkill = (typeof HOTBAR)[number];
+export type SkillId = HotbarSkill | 'dodge';
 
 /** Skills sent as cast messages; dodge and lunge travel inside movement input instead. */
 export type CastSkillId = Exclude<SkillId, 'dodge' | 'lunge'>;
-export const CAST_SKILLS: readonly CastSkillId[] = ['attack', 'stance', 'parry', 'ultimate', 'potion'];
+export const CAST_SKILLS: readonly CastSkillId[] = ['attack', 'stance', 'parry', 'ultimate', 'potion', 'manaPotion'];
 
 export interface ComboHit {
   anim: Extract<PlayerAnim, 'attack1' | 'attack2' | 'attack3'>;
@@ -72,6 +76,8 @@ export const SWORDSMAN = {
   dodge: { cooldownMs: 6000, distance: 4, durationMs: 250 },
   /** Provisional. */
   potion: { cooldownMs: 15_000, healPct: 0.3 },
+  /** Provisional: restores mana (the swordsman's resource, GDD 5.1 ปราณดาบ, shown as "Mana"). */
+  manaPotion: { cooldownMs: 15_000, restore: 50 },
 } as const;
 
 /** Cooldown (ms) of any hotbar skill, for UI and validation. */

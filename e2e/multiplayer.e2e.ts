@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, inject, it } from 'vitest';
-import { Msg, RUN_SPEED, TICK_DT, TICK_MS, type CastAck, type HitEvent } from '@aranya/shared';
+import { Msg, RUN_SPEED, TICK_DT, TICK_MS, type CastAck, type HitEvent, type TelegraphEvent } from '@aranya/shared';
 import { joinZone, playerOf, sleep, waitFor, type NetTarget, type ZoneRoom } from './helpers.ts';
 
 const serverUrl = inject('serverUrl');
@@ -92,6 +92,36 @@ describe('zone room (real server, headless clients)', () => {
     expect(acks[0]).toMatchObject({ ok: true, comboStep: 1 });
     await waitFor(() => hitsSeen.some((h) => h.target === nearest[0] && h.kind === 'damage'), 3000, 'hit event');
     await waitFor(() => (a.state.targets as Map<string, NetTarget>).get(nearest[0])!.hp < nearest[1].maxHp, 3000, 'dummy HP drop');
+  });
+
+  it('spawns the GDD 8.3 monsters, and a Fire Fowl attacks first with a telegraph (ROADMAP 1.3)', async () => {
+    const a = await join();
+    const telegraphs: TelegraphEvent[] = [];
+    a.onMessage(Msg.Telegraph, (tg: TelegraphEvent) => telegraphs.push(tg));
+    await waitFor(() => (a.state.targets as Map<string, NetTarget & { kind: string; species: string }>).size > 0, 3000, 'targets');
+    const targets = a.state.targets as Map<string, NetTarget & { kind: string; species: string }>;
+    const species = new Set([...targets.values()].filter((t) => t.kind === 'monster').map((t) => t.species));
+    expect(species).toEqual(new Set(['lostMom', 'fireFowl', 'khamod']));
+
+    // Walk towards the nearest Fire Fowl until it notices us (aggro 6 m) and stop.
+    const fowlId = [...targets.entries()].find(([, t]) => t.species === 'fireFowl')![0];
+    let seq = 1;
+    for (let i = 0; i < 200; i++) {
+      const me = playerOf(a)!;
+      const fowl = targets.get(fowlId)!;
+      const dx = fowl.x - me.x;
+      const dz = fowl.z - me.z;
+      if (Math.hypot(dx, dz) < 4) break;
+      a.send(Msg.Input, { seq: seq++, mx: Math.abs(dx) > 0.5 ? Math.sign(dx) : 0, mz: Math.abs(dz) > 0.5 ? Math.sign(dz) : 0 });
+      await sleep(TICK_MS);
+    }
+    for (let i = 0; i < 3; i++) {
+      a.send(Msg.Input, { seq: seq++, mx: 0, mz: 0 });
+      await sleep(TICK_MS);
+    }
+    await waitFor(() => telegraphs.some((tg) => tg.source.startsWith('fireFowl')), 8000, 'fowl telegraph');
+    expect(telegraphs.find((tg) => tg.source.startsWith('fireFowl'))!.durationMs).toBeGreaterThanOrEqual(1000);
+    await waitFor(() => playerOf(a)!.hp < 500, 6000, 'player hurt by the pecks');
   });
 
   it('rejects casts the server does not allow and ignores malformed ones', async () => {

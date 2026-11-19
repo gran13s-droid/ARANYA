@@ -85,8 +85,8 @@ describe('hit shapes', () => {
 });
 
 describe('skills data', () => {
-  it('has the 7-slot hotbar of GDD 4.3', () => {
-    expect(HOTBAR).toEqual(['attack', 'stance', 'lunge', 'parry', 'ultimate', 'dodge', 'potion']);
+  it('has the 7-slot hotbar on keys 1-7 (GDD 4.3), dodge kept off the hotbar', () => {
+    expect(HOTBAR).toEqual(['attack', 'stance', 'lunge', 'parry', 'ultimate', 'potion', 'manaPotion']);
   });
 
   it('times combo hits from the animation impact frames (Art Bible 5.2)', () => {

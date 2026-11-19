@@ -62,6 +62,8 @@ describe('CombatWorld', () => {
       castStarted: () => {},
       hits: (h) => hits.push(...h),
       telegraph: (t) => telegraphs.push(t),
+      projectile: () => {},
+      projectileEnd: () => {},
     });
     world.addPlayer('p1', SPAWN);
     world.addTarget({ id: 'dummy', kind: 'dummy', pos: { x: 0, y: 0, z: -4.5 }, elements: ['jade'], maxHp: 2000, def: 30, atk: 0 });
@@ -140,6 +142,15 @@ describe('CombatWorld', () => {
     expect(cast('potion').ok).toBe(true);
     expect(p.hp).toBe(100 + SWORDSMAN_STATS.maxHp * SWORDSMAN.potion.healPct);
     expect(cast('potion')).toMatchObject({ ok: false, reason: 'cooldown' });
+  });
+
+  it('restores mana with a mana potion, capped at the maximum, and puts it on cooldown', () => {
+    const p = world.players.get('p1')!;
+    p.resource = 80;
+    expect(cast('manaPotion')).toMatchObject({ ok: true, cooldownMs: SWORDSMAN.manaPotion.cooldownMs });
+    expect(p.resource).toBe(SWORDSMAN_STATS.resourceMax);
+    expect(hits.at(-1)).toMatchObject({ kind: 'mana', amount: 20 });
+    expect(cast('manaPotion')).toMatchObject({ ok: false, reason: 'cooldown' });
   });
 
   describe('lag compensation', () => {

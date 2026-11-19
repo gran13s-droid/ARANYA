@@ -8,6 +8,7 @@ import {
   parseInput,
   stepMotion,
   type Element,
+  type MonsterId,
 } from '@aranya/shared';
 import { InputQueue } from '../inputQueue.ts';
 import { PlayerState, TargetState, ZoneState } from '../state.ts';
@@ -28,6 +29,17 @@ const MAX_CATCHUP_TICKS = 5;
 const RTT_SMOOTHING = 0.25;
 
 /** Training ground for Step 1.2: one dummy per element plus a sparring dummy that swings back. */
+/** Step 1.3 monsters (GDD 8.3), placed around the training ground. */
+const MONSTER_SPAWNS: { id: string; species: MonsterId; x: number; z: number }[] = [
+  { id: 'lostMom_1', species: 'lostMom', x: -12, z: -18 },
+  { id: 'lostMom_2', species: 'lostMom', x: -17, z: -13 },
+  { id: 'lostMom_3', species: 'lostMom', x: -8, z: -20 },
+  { id: 'fireFowl_1', species: 'fireFowl', x: 16, z: -18 },
+  { id: 'fireFowl_2', species: 'fireFowl', x: 19, z: -13 },
+  { id: 'khamod_1', species: 'khamod', x: 18, z: 3 },
+  { id: 'khamod_2', species: 'khamod', x: 3, z: 18 },
+];
+
 const DUMMIES: { id: string; element: Element; x: number; z: number; sparring?: boolean; cursed?: boolean }[] = [
   { id: 'dummy_fire', element: 'fire', x: -6, z: -14 },
   { id: 'dummy_smoke', element: 'smoke', x: -2, z: -14 },
@@ -62,6 +74,8 @@ export class ZoneRoom extends Room<{ state: ZoneState }> {
       castStarted: (evt) => this.broadcast(Msg.CastStarted, evt, { except: this.clients.getById(evt.id) ?? undefined }),
       hits: (evts) => this.broadcast(Msg.Hits, evts),
       telegraph: (evt) => this.broadcast(Msg.Telegraph, evt),
+      projectile: (evt) => this.broadcast(Msg.Projectile, evt),
+      projectileEnd: (evt) => this.broadcast(Msg.ProjectileEnd, evt),
     });
     console.log(`[zone] ${this.roomId} combat rng seed ${seed}`);
 
@@ -81,6 +95,16 @@ export class ZoneRoom extends Room<{ state: ZoneState }> {
       s.element = d.element;
       this.state.targets.set(d.id, s);
       this.targetStates.set(d.id, s);
+    }
+
+    for (const m of MONSTER_SPAWNS) {
+      const t = this.combat.addMonster(m.id, m.species, { x: m.x, y: 0, z: m.z });
+      const s = new TargetState();
+      s.kind = 'monster';
+      s.species = m.species;
+      s.element = t.elements[0] ?? 'fire';
+      this.state.targets.set(m.id, s);
+      this.targetStates.set(m.id, s);
     }
 
     this.onMessage(Msg.Input, (client: Client, payload: unknown) => {
