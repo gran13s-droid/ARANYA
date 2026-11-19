@@ -38,7 +38,8 @@ describe('zone room (real server, headless clients)', () => {
 
   it('ignores invalid inputs without disconnecting the sender', async () => {
     const a = await join();
-    a.send(Msg.Input, { seq: 1, mx: 5, mz: 0 });
+    a.send(Msg.Input, { seq: 1, mx: 500, mz: 0 });
+    a.send(Msg.Input, { seq: 1, mx: 0.5, mz: 0 });
     a.send(Msg.Input, 'garbage');
     a.send(Msg.Input, { seq: 2 ** 40, mx: 0, mz: 1 });
     a.send(Msg.Input, { seq: -1, mx: 0, mz: 1 });

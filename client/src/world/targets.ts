@@ -176,6 +176,9 @@ export class TargetViews {
     const barFill = MeshBuilder.CreatePlane(`barFill_${id}`, { width: BAR_TRACK_M, height: WORLD_BAR.trackH * TEXEL }, s);
     barFill.material = this.mat('FIRE', true);
     barFill.position.z = -0.01;
+    // Bars must not catch clicks: a click there should still reach the ground or the target.
+    barBg.isPickable = false;
+    barFill.isPickable = false;
     const bar = new TransformNode(`bar_${id}`, s);
     bar.parent = root;
     bar.position.y = isMonster ? 1.7 : 2.45;

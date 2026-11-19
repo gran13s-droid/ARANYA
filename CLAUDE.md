@@ -27,6 +27,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
   - **Step 1.3 AI มอนสเตอร์**: ผู้ใช้เลือกมอนจาก GDD 8.3 (ลูกมอมหลงทาง, ไก่ป่าเพลิง, ผีโขมด) พร้อม soft lock เป้า ยั่วด้วยยืนม้าหยก และกระสุนที่ตรวจชนแบบ swept ภาพมอนยังเป็นโมเดล low-poly ชั่วคราว
   - ปรับตามผู้ใช้: แถบลัดปุ่ม 1–7 (ยา HP + ยามานา), คลิกซ้ายล็อกเป้า / กดค้างโจมตี, แถบทรัพยากรแสดงเป็น "มานา"
   - **UI placeholder แบบพิกเซล** ตามภาพที่ 2 (`ref_02_ui_effect.png`): HUD ผู้เล่น, แถบสกิลข้าวหลามตัด, แผงเป้าหมาย และแถบ HP เหนือหัวมอน วาดจากโค้ด รอศิลปินทำ U-03 / U-05 / U-06 (ขนาดไอคอน 24 หรือ 32 ยังไม่ได้ตัดสิน ดู tracker U-06)
+  - **คลิกเดิน / คลิกมอนเพื่อเดินเข้าไปตี** (GDD 4.3 v0.8) ยังไม่มีการหาเส้นทาง รอ navmesh F-08
 - ถัดไป: **Step 2.1 ฉากโซน 1** (ดูข้อขัดแย้งในตารางท้ายไฟล์)
 - ค่าชั่วคราว (ความเร็ววิ่ง, ค่าพลัง, ตัวคูณคอมโบ ฯลฯ) อยู่ใน GDD 4.4 ถ้าแก้ตัวเลขใน `/shared` ต้องแก้ตาราง GDD 4.4 ให้ตรงกันด้วย
 - **ข้อเสนอที่ยังไม่อนุมัติ** อยู่ใน Art Bible หัวข้อ 13 (แถวที่สถานะเป็น "เสนอ") ยังไม่ใช่ canon ห้ามนำไปเขียนโค้ดหรือแก้ GDD จนกว่าผู้ใช้จะอนุมัติ ข้อที่ขวางงานอยู่คือข้อ 5 (pipeline 3D → พิกเซล) ซึ่งต้องตัดสินก่อนเริ่ม `C-02`
@@ -85,7 +86,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | `pnpm typecheck` | `tsc` ทุก package + `e2e/` (strict + `noUncheckedIndexedAccess`) |
 | `pnpm lint` | ESLint (typescript-eslint strict) ทั้ง repo |
 | `pnpm test` | unit test (Vitest) ทุกไฟล์ `*.test.ts` ใน shared, server และ client ใช้เวลาไม่ถึง 1 วิ |
-| `pnpm test:e2e` | e2e (35–60 วิ): `e2e/setup.ts` เปิด game server จริง (พอร์ต 2577) + Vite (พอร์ต 5183) เอง แล้วรัน `multiplayer.e2e.ts` (client หลายตัวแบบไม่มีหน้าจอ: sync, input ผิดรูปแบบ, flood, ออกจากห้อง, ฟันหุ่นฝึก, cast ที่ถูกปฏิเสธ) และ `browser.e2e.ts` (2 แท็บ, วาด 200 ตัว, ต่อสู้ด้วยแถบลัด ใน Edge/Chrome ที่ติดตั้งในเครื่องผ่าน playwright-core ภาพหน้าจอเก็บใน `e2e/.artifacts/` และข้ามเองถ้าไม่พบเบราว์เซอร์ หรือกำหนดเองด้วย `E2E_BROWSER_PATH`) ปิด process เองทั้งหมดเมื่อจบ |
+| `pnpm test:e2e` | e2e (60–100 วิ): `e2e/setup.ts` เปิด game server จริง (พอร์ต 2577) + Vite (พอร์ต 5183) เอง แล้วรัน `multiplayer.e2e.ts` (client หลายตัวแบบไม่มีหน้าจอ: sync, input ผิดรูปแบบ, flood, ออกจากห้อง, ฟันหุ่นฝึก, cast ที่ถูกปฏิเสธ) และ `browser.e2e.ts` (2 แท็บ, วาด 200 ตัว, ต่อสู้ด้วยแถบลัด, คลิกเดินและคลิกหุ่นเพื่อเข้าไปตี ใช้ `window.__aranyaProject()` แปลงจุดในโลกเป็นพิกัดบนจอ ใน Edge/Chrome ที่ติดตั้งในเครื่องผ่าน playwright-core ภาพหน้าจอเก็บใน `e2e/.artifacts/` และข้ามเองถ้าไม่พบเบราว์เซอร์ หรือกำหนดเองด้วย `E2E_BROWSER_PATH`) ปิด process เองทั้งหมดเมื่อจบ |
 | `pnpm check` | lint + typecheck + unit test (ใช้ก่อน commit) ประมาณ 15–20 วิ ส่วนครั้งแรกหลัง install ราว 70 วิ ซึ่งส่วนใหญ่เป็นเวลาของ typecheck |
 | `pnpm test:all` | `check` + `test:e2e` |
 | `pnpm vitest run shared/src/movement.test.ts` | รัน unit test ไฟล์เดียว |
@@ -93,7 +94,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | `pnpm test:e2e e2e/multiplayer.e2e.ts` | รัน e2e ไฟล์เดียว (ข้ามการทดสอบในเบราว์เซอร์) |
 
 เครื่องมือเฉพาะตอน dev (ไม่อยู่ใน production build):
-- `window.__aranyaDebug()`: ให้ browser e2e อ่านตำแหน่ง, ท่า, draw call, frame time, HP, ปราณดาบ, HP หุ่นฝึก, จำนวนเลขดาเมจ และ cast ack ล่าสุด
+- `window.__aranyaDebug()`: ให้ browser e2e อ่านตำแหน่ง, ท่า, draw call, frame time, HP, มานา, HP และตำแหน่งของเป้า, เป้าที่ล็อก, คำสั่งคลิกเดิน, จำนวนเลขดาเมจ และ cast ack ล่าสุด ส่วน `window.__aranyaProject(x, y, z)` แปลงจุดในโลกเป็นพิกเซล CSS สำหรับคลิก
 - `?bots=200`: เพิ่มตัวละครจำลองฝั่ง client เพื่อทดสอบการวาด
 
 client ต่อ server ที่ `http://<hostname>:2567` ถ้าจะเปลี่ยนให้ตั้ง `VITE_SERVER_URL`
@@ -120,7 +121,7 @@ client ต่อ server ที่ `http://<hostname>:2567` ถ้าจะเป
 **การเคลื่อนที่ (ส่วนที่ต้องอ่านหลายไฟล์ถึงจะเข้าใจ)**
 
 - `shared/src/movement.ts` `stepPlayer()` เป็นฟังก์ชัน pure ที่เดิน 1 tick ใช้ทั้งใน `server/src/rooms/ZoneRoom.ts` (ผลจริง) และ `client/src/net/prediction.ts` (ทำนายและ replay ตอน reconcile) **ถ้าแก้กติกาการเดิน ต้องแก้ที่ shared เท่านั้น** ไม่อย่างนั้นสองฝั่งจะคำนวณไม่ตรงกัน
-- client ส่งแค่ intent `{ seq, mx, mz }` (ค่า -1/0/1) ทุก tick ฝั่ง server ตรวจด้วย `parseInput()` และจำกัดอัตราด้วย `server/src/inputQueue.ts` (token bucket: เฉลี่ยไม่เกิน 1 input ต่อ tick จึงกัน speed hack ได้)
+- client ส่งแค่ intent `{ seq, mx, mz }` (ทิศเป็นจำนวนเต็ม: ปุ่มใช้ -1/0/1 ส่วนคลิกเดินใช้ได้ถึง ±64) ทุก tick ฝั่ง server ตรวจด้วย `parseInput()` และจำกัดอัตราด้วย `server/src/inputQueue.ts` (token bucket: เฉลี่ยไม่เกิน 1 input ต่อ tick จึงกัน speed hack ได้)
 - state ที่ sync (`server/src/state.ts`) มีเฉพาะสิ่งที่ client ต้องวาดหรือ reconcile: ตำแหน่ง, `lastSeq`, ฟิลด์ของ `Motion`, HP / ทรัพยากร และ `TargetState` ของหุ่นและมอน ส่วนค่าความละเอียดเต็มเก็บใน `PlayerSim` ฝั่ง server
 - ผู้เล่นคนอื่นใช้ `client/src/net/interpolation.ts` ซึ่งวาดย้อนหลัง 100ms และไม่ extrapolate
 - พื้นหลายชั้นใช้ walk polygon ใน `shared/src/walkmesh.ts` (polygon นูนที่ซ้อนกันในแนวตั้งได้ + ธง `solid` + ไม่มีการตก) เป็นตัวแทน navmesh ชั่วคราวของ `F-08` ถ้าเปลี่ยนเป็น navmesh ที่ bake ให้คงสัญญาของ `resolveMove()` ไว้ ฉากที่ client วาดสร้างจากข้อมูล level เดียวกับที่ server ใช้ชน
@@ -145,7 +146,8 @@ client ต่อ server ที่ `http://<hostname>:2567` ถ้าจะเป
   - server เลือกจังหวะคอมโบต่างจากที่ทำนาย → เปลี่ยนท่าให้ตรง
   - คนอื่นได้ `CastStarted` ส่วนดาเมจมาทาง `Msg.Hits` และแต่ละคนเห็นเลขเฉพาะที่ตัวเองตีหรือโดน (Art Bible 7.6)
 - **ZoneRoom** เดิน simulation แบบ fixed timestep ที่ไล่ tick ให้ทันเวลาจริงเมื่อ interval มาช้า เพราะถ้าไม่ไล่ ระบบจำกัด input (1 ต่อ tick) จะทิ้ง input ตอนเครื่องมีโหลด
-- **ปุ่มบน PC**: WASD เดิน, 1 โจมตี, 2 ยืนม้าหยก, 3 ทะยานพยัคฆ์, 4 ปัดป้อง, 5 อัลติเมต, 6 ยา HP, 7 ยามานา, Space หลบ, Tab วนล็อกเป้า, คลิกซ้ายล็อกเป้า, กดคลิกซ้ายค้างโจมตีต่อเนื่อง
+- **ปุ่มบน PC**: WASD เดิน, 1 โจมตี, 2 ยืนม้าหยก, 3 ทะยานพยัคฆ์, 4 ปัดป้อง, 5 อัลติเมต, 6 ยา HP, 7 ยามานา, Space หลบ, Tab วนล็อกเป้า, คลิกพื้นเพื่อเดิน (กดค้างเพื่อเดินตามเคอร์เซอร์), คลิกมอนเพื่อล็อกเป้า เดินเข้าหา และฟัน 1 ครั้ง (กดค้างเพื่อตีต่อเนื่อง)
+- **คลิกเดิน** (`client/src/input/clickMove.ts`): หาจุดบนพื้นด้วยการยิง ray ไปชน walk polygon ชุดเดียวกับ server (ไม่ใช้ mesh pick) แล้วแปลงเป็น `mx, mz` ทุก tick เป็นจำนวนเต็มไม่เกิน `MOVE_AXIS_MAX` (64) ซึ่ง movement นำไป normalize ดังนั้นค่าที่ใหญ่ขึ้นไม่ได้ทำให้เดินเร็วขึ้น ส่วนปุ่มยังส่ง -1/0/1 เหมือนเดิม
 
 **มอนสเตอร์ (Step 1.3)**
 
