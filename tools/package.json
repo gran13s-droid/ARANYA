@@ -1,0 +1,20 @@
+{
+  "name": "@aranya/tools",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build-sprites": "tsx src/cli/buildSprites.ts",
+    "gen-placeholder": "tsx src/cli/genPlaceholder.ts",
+    "typecheck": "tsc -p tsconfig.json",
+    "import-hero": "tsx src/cli/importHero.ts"
+  },
+  "dependencies": {
+    "@aranya/shared": "workspace:*",
+    "pngjs": "^7.0.0"
+  },
+  "devDependencies": {
+    "@types/pngjs": "^6.0.5",
+    "tsx": "^4.23.15"
+  }
+}

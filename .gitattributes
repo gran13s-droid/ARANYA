@@ -1,0 +1,7 @@
+# Large binary art goes through Git LFS
+art/reference/**/*.png filter=lfs diff=lfs merge=lfs -text
+art/source/**/*.aseprite filter=lfs diff=lfs merge=lfs -text
+art/source/**/*.blend filter=lfs diff=lfs merge=lfs -text
+*.ts text eol=lf
+*.json text eol=lf
+*.md text eol=lf

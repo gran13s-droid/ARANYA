@@ -1,0 +1,22 @@
+{
+  "name": "@aranya/server",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "start": "node dist/index.js",
+    "build": "esbuild src/index.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/index.js --external:@colyseus/* --external:ws",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@aranya/shared": "workspace:*",
+    "@colyseus/core": "^0.18.29",
+    "@colyseus/schema": "^5.0.50",
+    "@colyseus/ws-transport": "^0.18.5"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.2",
+    "tsx": "^4.23.15"
+  }
+}
