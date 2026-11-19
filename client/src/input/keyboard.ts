@@ -12,7 +12,9 @@ export class Keyboard {
     target.addEventListener('keydown', (e) => {
       if (!e.repeat) this.pressed.add(e.code);
       this.down.add(e.code);
-      if (e.code === 'Space') e.preventDefault();
+      // Keep Space (dodge) from scrolling and Tab (soft lock) from moving focus out of the
+      // game: a focus change blurs the window, which would clear the press before it is read.
+      if (e.code === 'Space' || e.code === 'Tab') e.preventDefault();
     });
     target.addEventListener('keyup', (e) => this.down.delete(e.code));
     target.addEventListener('blur', () => {

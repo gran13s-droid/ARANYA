@@ -95,7 +95,7 @@ export interface CastStarted {
 }
 
 /** `death`: a monster was defeated (purified, GDD 8.3); `taunt`: monsters now target the player. */
-export type HitKind = 'damage' | 'heal' | 'parry' | 'stun' | 'burn' | 'death' | 'taunt';
+export type HitKind = 'damage' | 'heal' | 'mana' | 'parry' | 'stun' | 'burn' | 'death' | 'taunt';
 
 export interface HitEvent {
   source: string;

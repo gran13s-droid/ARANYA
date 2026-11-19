@@ -19,6 +19,10 @@ declare global {
       numbersShown: number;
       /** Ground warnings currently visible. */
       telegraphs: number;
+      /** Soft-locked target id. */
+      locked: string | null;
+      /** Enemy projectiles in flight. */
+      projectiles: number;
       /** Last cast acknowledgements from the server. */
       acks: (CastAck & { t: number })[];
     };

@@ -24,7 +24,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
   - ตรวจ concept มอนตัวแรก ลูกมอมหลงทาง (Art Bible 7.7) และซิงก์พฤติกรรมลง GDD 8.3 แล้ว มอนตัวนี้คือมอนของ vertical slice (M0) ซึ่งต้องใช้พื้นเตือนแบบเส้น (`V-12`) กับลูกไฟหยก (`V-17`)
   - **Step 1.1 Sprite Pipeline**: `/tools` ตรวจและรวม atlas, ตัวละคร 4 ทิศ (3 ทิศ + mirror) พร้อม state machine, วาด 200 ตัวได้ใน 11 draw call (รวมทั้งฉาก) ภาพตัวละครยังเป็น placeholder ที่สร้างจากสคริปต์
   - **Step 1.2 ระบบต่อสู้**: ชุดสกิลนักดาบครบตาม GDD 5.2 บนแถบลัด 7 ช่อง, ดาเมจและการโดนตัดสินที่ server (มี lag compensation), หุ่นฝึก 4 ธาตุและหุ่นซ้อมที่ฟันกลับ, เลขดาเมจ, hit stop และกล้องสั่น ตัวเลขที่ GDD ยังไม่มีเป็นค่าชั่วคราวใน GDD 4.4
-- ถัดไป: **Step 1.3 AI มอนสเตอร์** (ระวังข้อขัดแย้ง ❓ ในตารางท้ายไฟล์: รายชื่อมอนต้องถามผู้ใช้ก่อน) และต้องทำ soft lock เป้าตาม GDD 4.3 ไปพร้อมกัน
+  - **Step 1.3 AI มอนสเตอร์**: ผู้ใช้เลือกมอนจาก GDD 8.3 (ลูกมอมหลงทาง, ไก่ป่าเพลิง, ผีโขมด) พร้อม soft lock เป้า ยั่วด้วยยืนม้าหยก และกระสุนที่ตรวจชนแบบ swept ภาพมอนยังเป็นโมเดล low-poly ชั่วคราว
+  - ปรับตามผู้ใช้: แถบลัดปุ่ม 1–7 (ยา HP + ยามานา), คลิกซ้ายล็อกเป้า / กดค้างโจมตี, แถบทรัพยากรแสดงเป็น "มานา"
+  - **UI placeholder แบบพิกเซล** ตามภาพที่ 2 (`ref_02_ui_effect.png`): HUD ผู้เล่น, แถบสกิลข้าวหลามตัด, แผงเป้าหมาย และแถบ HP เหนือหัวมอน วาดจากโค้ด รอศิลปินทำ U-03 / U-05 / U-06 (ขนาดไอคอน 24 หรือ 32 ยังไม่ได้ตัดสิน ดู tracker U-06)
+- ถัดไป: **Step 2.1 ฉากโซน 1** (ดูข้อขัดแย้งในตารางท้ายไฟล์)
 - ค่าชั่วคราว (ความเร็ววิ่ง, ค่าพลัง, ตัวคูณคอมโบ ฯลฯ) อยู่ใน GDD 4.4 ถ้าแก้ตัวเลขใน `/shared` ต้องแก้ตาราง GDD 4.4 ให้ตรงกันด้วย
 - **ข้อเสนอที่ยังไม่อนุมัติ** อยู่ใน Art Bible หัวข้อ 13 (แถวที่สถานะเป็น "เสนอ") ยังไม่ใช่ canon ห้ามนำไปเขียนโค้ดหรือแก้ GDD จนกว่าผู้ใช้จะอนุมัติ ข้อที่ขวางงานอยู่คือข้อ 5 (pipeline 3D → พิกเซล) ซึ่งต้องตัดสินก่อนเริ่ม `C-02`
 
@@ -102,10 +105,11 @@ client ต่อ server ที่ `http://<hostname>:2567` ถ้าจะเป
 
 ## สถาปัตยกรรม
 
-**โครงสร้าง repo** (`/tools` และ `/infra` ยังไม่ได้สร้าง)
+**โครงสร้าง repo** (`/infra` ยังไม่ได้สร้าง)
 
 ```
 /client   Babylon.js + Vite (PWA ยังไม่ได้ตั้ง)
+/e2e      Vitest + playwright-core (เปิด server และ Vite ของตัวเอง)
 /server   Colyseus rooms + systems
 /shared   types, ค่าคงที่, logic ที่ต้องรันเหมือนกันทั้งสองฝั่ง (import เป็น .ts ตรง ๆ ไม่มี build step)
 /tools    asset pipeline + สคริปต์ตรวจอาร์ตใน CI
@@ -117,9 +121,10 @@ client ต่อ server ที่ `http://<hostname>:2567` ถ้าจะเป
 
 - `shared/src/movement.ts` `stepPlayer()` เป็นฟังก์ชัน pure ที่เดิน 1 tick ใช้ทั้งใน `server/src/rooms/ZoneRoom.ts` (ผลจริง) และ `client/src/net/prediction.ts` (ทำนายและ replay ตอน reconcile) **ถ้าแก้กติกาการเดิน ต้องแก้ที่ shared เท่านั้น** ไม่อย่างนั้นสองฝั่งจะคำนวณไม่ตรงกัน
 - client ส่งแค่ intent `{ seq, mx, mz }` (ค่า -1/0/1) ทุก tick ฝั่ง server ตรวจด้วย `parseInput()` และจำกัดอัตราด้วย `server/src/inputQueue.ts` (token bucket: เฉลี่ยไม่เกิน 1 input ต่อ tick จึงกัน speed hack ได้)
-- state ที่ sync (`server/src/state.ts`) มีแค่ตำแหน่ง + `lastSeq` ส่วนค่าความละเอียดเต็มเก็บใน `PlayerSim` ฝั่ง server
+- state ที่ sync (`server/src/state.ts`) มีเฉพาะสิ่งที่ client ต้องวาดหรือ reconcile: ตำแหน่ง, `lastSeq`, ฟิลด์ของ `Motion`, HP / ทรัพยากร และ `TargetState` ของหุ่นและมอน ส่วนค่าความละเอียดเต็มเก็บใน `PlayerSim` ฝั่ง server
 - ผู้เล่นคนอื่นใช้ `client/src/net/interpolation.ts` ซึ่งวาดย้อนหลัง 100ms และไม่ extrapolate
 - พื้นหลายชั้นใช้ walk polygon ใน `shared/src/walkmesh.ts` (polygon นูนที่ซ้อนกันในแนวตั้งได้ + ธง `solid` + ไม่มีการตก) เป็นตัวแทน navmesh ชั่วคราวของ `F-08` ถ้าเปลี่ยนเป็น navmesh ที่ bake ให้คงสัญญาของ `resolveMove()` ไว้ ฉากที่ client วาดสร้างจากข้อมูล level เดียวกับที่ server ใช้ชน
+
 **การต่อสู้ (Step 1.2)**
 
 - **ข้อมูลกลาง** อยู่ใน shared:
@@ -140,7 +145,15 @@ client ต่อ server ที่ `http://<hostname>:2567` ถ้าจะเป
   - server เลือกจังหวะคอมโบต่างจากที่ทำนาย → เปลี่ยนท่าให้ตรง
   - คนอื่นได้ `CastStarted` ส่วนดาเมจมาทาง `Msg.Hits` และแต่ละคนเห็นเลขเฉพาะที่ตัวเองตีหรือโดน (Art Bible 7.6)
 - **ZoneRoom** เดิน simulation แบบ fixed timestep ที่ไล่ tick ให้ทันเวลาจริงเมื่อ interval มาช้า เพราะถ้าไม่ไล่ ระบบจำกัด input (1 ต่อ tick) จะทิ้ง input ตอนเครื่องมีโหลด
-- **ปุ่มบน PC**: WASD เดิน, J โจมตี, K ยืนม้าหยก, L ทะยานพยัคฆ์, U ปัดป้อง, I อัลติเมต, Space หลบ, Q ยา
+- **ปุ่มบน PC**: WASD เดิน, 1 โจมตี, 2 ยืนม้าหยก, 3 ทะยานพยัคฆ์, 4 ปัดป้อง, 5 อัลติเมต, 6 ยา HP, 7 ยามานา, Space หลบ, Tab วนล็อกเป้า, คลิกซ้ายล็อกเป้า, กดคลิกซ้ายค้างโจมตีต่อเนื่อง
+
+**มอนสเตอร์ (Step 1.3)**
+
+- ข้อมูลมอนอยู่ใน `shared/src/data/monsters.ts` (`MONSTERS`) และสมองมอนอยู่ใน `server/src/systems/monsters.ts` เป็น state machine (idle → wander → chase → windup → flurry/ยิง/ระเบิด → return) ที่ทำงานผ่าน interface `MonsterHost` ซึ่ง `CombatWorld` เป็นผู้ implement
+- ทุกการโจมตีของมอนต้องเริ่มด้วยพื้นเตือน (`telegraphMs` ≥ 1000) และล็อกทิศตั้งแต่ตอนนั้น
+- กระสุนจำลองที่ server (`tickProjectiles`) และตรวจชนแบบ swept segment ส่วน client แค่วาดตาม `Msg.Projectile` / `Msg.ProjectileEnd`
+- มอนตายส่ง HitEvent ชนิด `death` (ภาพเป็นการชำระ ไม่ใช่การทำลาย) ส่วนของดรอปยังไม่ให้จนกว่าจะมี inventory (Step 3.1)
+- soft lock อยู่ใน `client/src/combat/softLock.ts` เป็นแค่ตัวช่วยเล็ง client ยังส่งแค่สกิลกับทิศ
 
 **สไปรต์ (Step 1.1)**
 
@@ -155,6 +168,15 @@ client ต่อ server ที่ `http://<hostname>:2567` ถ้าจะเป
   - `CharacterAnimator` คุม state ของท่า ส่วน `facing.ts` แปลงทิศการเดินเป็น 4 ทิศ โดยทิศ W ใช้ภาพทิศ E กลับด้าน
   - sprite วางให้พิกเซล pivot (เท้า) ตรงจุดบนพื้น โดยเลื่อนตามแกน up ของกล้อง
 - กล้อง: `client/src/camera/pixelCamera.ts` คำนวณระยะกล้องจาก pixel scale จำนวนเต็ม (`floor(ความสูงจอ / 360)`) และสีทั้งหมดอ่านจาก `art/palette/aranya-15.gpl` ผ่าน `client/src/palette.ts` ห้ามฮาร์ดโค้ด hex
+
+**UI / HUD**
+
+- DOM ทับบน canvas ของ Babylon ทุกขนาดเป็นหน่วยพิกเซล UI ที่ 640×360 ผ่านตัวแปร CSS `--u` (= CSS px ต่อ 1 พิกเซล UI จาก `uiPixelSize()` ซึ่งเป็น `floor(min(w/640, h/360))` หาร devicePixelRatio) และองค์ประกอบที่จัดกลางจอต้องคำนวณตำแหน่งให้ลงพิกเซลจริงพอดี ไม่อย่างนั้นภาพ NEAREST จะเบลอ
+- `client/src/ui/pixelArt.ts` วาดภาพ UI ทั้งหมดจากโค้ดด้วยสีจากพาเลตต์ แล้ว cache เป็น data URL เมื่อศิลปินส่งภาพจริง ให้แทนที่เฉพาะฟังก์ชันในไฟล์นี้ โดยไม่ต้องแก้ DOM ใน `hud.ts`
+- `hud.ts` เขียน DOM เฉพาะเมื่อค่าเปลี่ยน (`write()`, `BarView.set()`) เพราะ `update()` ถูกเรียกทุกเฟรม
+- ตัวเลขทั้งใน HUD และเลขดาเมจใช้ฟอนต์ bitmap ชุดเดียวใน `ui/bitmapFont.ts` ส่วนข้อความอื่นเป็น vector font จาก i18n
+- แถบ HP เหนือหัวมอน (`world/targets.ts`) ใช้ texture กรอบเดียวกันทุกตัว ขนาด 1 texel = 1/PPU เมตร
+- e2e อ้างอิง class `.hud-target` ของแผงเป้าหมาย
 
 **Rooms และ service**
 
@@ -207,7 +229,7 @@ client ต่อ server ที่ `http://<hostname>:2567` ถ้าจะเป
 | 0.3 ✔ | กล้อง orthographic เอียง 45° | perspective FOV 30° ก้ม 35° (Art Bible 10.1) ทำแล้ว |
 | 1.1 ✔ | 4 ทิศ + mirror = 8 ทิศ | 3 ทิศ + mirror = 4 ทิศ (Art Bible 4.1) ทำแล้ว |
 | 1.2 ✔ | สกิล 4 ช่อง | แถบลัด 7 ช่อง: โจมตี, สกิล 2–4, อัลติเมต, หลบ, ยา (GDD 4.3) ทำแล้ว |
-| 1.3 ❓ | วิญญาณเพลิง, คางคกควัน, เม่นไฟ | มอนโซน 1 อยู่ใน GDD 8.3 และ "คางคก" ที่เป็นศัตรูจะชนกับคู่หูคันคากหยก |
+| 1.3 ✔ | วิญญาณเพลิง, คางคกควัน, เม่นไฟ | ผู้ใช้เลือกมอนจาก GDD 8.3: ลูกมอมหลงทาง, ไก่ป่าเพลิง, ผีโขมด ทำแล้ว |
 | 2.1 | หมู่บ้านริมน้ำ → ทางป่า → ศาลร้าง → ลานต้นไทร | 6 พื้นที่ + ห้องรากไทร (GDD 8.2, Art Bible 10.5) |
 | 2.2 ❓ | ปาร์ตี้ 4–8 คน, enrage 8 นาที, ล้างคำสาปที่ศาลหิน, สไปรต์แยกชิ้นที่ขยับด้วยโค้ด | ปาร์ตี้ 4 คน, enrage 12 นาที, ธาตุสลับตามเฟส (GDD 8.6), สไปรต์ทั้งตัว 192px + palette swap (Art Bible 5.5, 7.4) |
 | 2.3 | ฟอนต์พิกเซลภาษาไทย | vector font (Art Bible 9.1) |

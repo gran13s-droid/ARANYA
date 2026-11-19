@@ -6,8 +6,11 @@ export interface NetPlayer {
   y: number;
   z: number;
   lastSeq: number;
+  hp: number;
 }
 export interface NetTarget {
+  kind: string;
+  species: string;
   hp: number;
   maxHp: number;
   x: number;

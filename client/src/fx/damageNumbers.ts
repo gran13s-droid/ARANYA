@@ -1,25 +1,13 @@
 import { DynamicTexture, Mesh, MeshBuilder, StandardMaterial, Texture, type Scene } from '@babylonjs/core';
 import { PPU, type Vec3 } from '@aranya/shared';
 import { color, type PaletteName } from '../palette.ts';
+import { GLYPHS } from '../ui/bitmapFont.ts';
 
 /**
  * Floating damage numbers in a 5x7 bitmap font (Art Bible V-11: digits are a
  * bitmap font, not the vector UI font). Drawn at sprite pixel scale with an
  * INK outline; crits are drawn twice as large.
  */
-const GLYPHS: Record<string, string[]> = {
-  '0': ['01110', '10001', '10011', '10101', '11001', '10001', '01110'],
-  '1': ['00100', '01100', '00100', '00100', '00100', '00100', '01110'],
-  '2': ['01110', '10001', '00001', '00110', '01000', '10000', '11111'],
-  '3': ['11110', '00001', '00001', '01110', '00001', '00001', '11110'],
-  '4': ['00010', '00110', '01010', '10010', '11111', '00010', '00010'],
-  '5': ['11111', '10000', '11110', '00001', '00001', '10001', '01110'],
-  '6': ['00110', '01000', '10000', '11110', '10001', '10001', '01110'],
-  '7': ['11111', '00001', '00010', '00100', '01000', '01000', '01000'],
-  '8': ['01110', '10001', '10001', '01110', '10001', '10001', '01110'],
-  '9': ['01110', '10001', '10001', '01111', '00001', '00010', '01100'],
-  '+': ['00000', '00100', '00100', '11111', '00100', '00100', '00000'],
-};
 
 const CANVAS_W = 64;
 const CANVAS_H = 24;
@@ -90,7 +78,7 @@ export class DamageNumbers {
   private draw(tex: DynamicTexture, text: string, tint: PaletteName, scale: number): void {
     const ctx = tex.getContext() as CanvasRenderingContext2D;
     ctx.clearRect(0, 0, CANVAS_W, CANVAS_H);
-    const glyphs = [...text].map((ch) => GLYPHS[ch]).filter((g): g is string[] => !!g);
+    const glyphs = [...text].map((ch) => GLYPHS[ch]).filter((g): g is readonly string[] => !!g);
     const advance = 6 * scale;
     const width = glyphs.length * advance - scale;
     const ox = Math.floor((CANVAS_W - width) / 2);

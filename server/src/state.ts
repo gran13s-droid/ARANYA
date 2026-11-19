@@ -33,7 +33,10 @@ export type PlayerState = InstanceType<typeof PlayerState>;
 /** Training dummies (Step 1.2); monsters arrive in Step 1.3. */
 export const TargetState = schema(
   {
+    /** dummy | sparring | monster */
     kind: t.string(),
+    /** MonsterId for kind 'monster'. */
+    species: t.string(),
     element: t.string(),
     x: t.float32(),
     y: t.float32(),

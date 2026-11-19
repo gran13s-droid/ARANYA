@@ -9,25 +9,21 @@
       /* Colors are injected from art/palette/aranya-15.gpl at startup (client/src/main.ts). */
       html, body { margin: 0; height: 100%; overflow: hidden; background: var(--c-forest-deep, #000); }
       #game { width: 100%; height: 100%; display: block; outline: none; touch-action: none; }
-      #status, #hud { font: 14px/1.4 'Noto Sans Thai Looped', system-ui, sans-serif; color: var(--c-cream); }
-      #status { position: fixed; left: 12px; top: 10px; padding: 4px 10px; border-radius: 4px; background: rgba(20, 27, 26, 0.7); pointer-events: none; }
-      #hud { position: fixed; left: 0; right: 0; bottom: 12px; display: flex; flex-direction: column; align-items: center; gap: 6px; pointer-events: none; }
-      .hud-bars { display: flex; gap: 16px; }
-      .hud-bar { display: flex; align-items: center; gap: 6px; padding: 2px 8px; border-radius: 4px; background: rgba(20, 27, 26, 0.75); }
-      .hud-bar-track { width: 160px; height: 8px; background: var(--c-ink); border: 1px solid var(--c-stone); }
-      .hud-bar-fill { height: 100%; width: 0; }
-      .hud-bar-hp .hud-bar-fill { background: var(--c-fire); }
-      .hud-bar-res .hud-bar-fill { background: var(--c-gold); }
-      .hud-bar-text { min-width: 64px; font-size: 12px; }
-      .hud-hotbar { display: flex; gap: 6px; }
-      .hud-slot { position: relative; width: 64px; height: 56px; overflow: hidden; border: 2px solid var(--c-stone); border-radius: 6px; background: rgba(20, 27, 26, 0.85); }
-      .hud-slot.ready { border-color: var(--c-gold); }
-      .hud-slot.rejected { animation: hud-reject 0.3s; }
-      @keyframes hud-reject { 0%, 100% { border-color: var(--c-stone); } 50% { border-color: var(--c-fire); } }
-      .hud-slot-name { position: absolute; left: 3px; right: 3px; top: 3px; font-size: 10px; line-height: 1.15; text-align: center; }
-      .hud-slot-key { position: absolute; right: 4px; bottom: 2px; font-size: 12px; color: var(--c-gold); }
-      .hud-slot-shade { position: absolute; left: 0; right: 0; bottom: 0; height: 0; background: rgba(20, 27, 26, 0.75); }
-      .hud-dead { display: none; padding: 6px 14px; border-radius: 4px; background: rgba(20, 27, 26, 0.85); color: var(--c-fire); }
+      #status { position: fixed; left: 12px; bottom: 8px; padding: 2px 8px; border-radius: 4px; background: rgba(20, 27, 26, 0.7); pointer-events: none; font: 12px/1.4 'Noto Sans Thai Looped', system-ui, sans-serif; color: var(--c-cream); }
+      /* Pixel UI (client/src/ui/hud.ts): every size is a multiple of --u = CSS px per 640x360 UI pixel (Art Bible 9.1). */
+      .ui-root { --u: 2px; --shade: color-mix(in srgb, var(--c-ink) 60%, transparent); position: fixed; inset: 0; pointer-events: none; color: var(--c-cream); font-family: 'Noto Sans Thai Looped', system-ui, sans-serif; }
+      .ui-root div, .ui-root span, .ui-root img, .ui-root canvas { position: absolute; }
+      .ui-px { image-rendering: pixelated; display: block; }
+      .ui-player, .ui-target { pointer-events: none; }
+      .ui-hotbar { bottom: calc(var(--u) * 4); height: calc(var(--u) * 45); }
+      .ui-shade { border-radius: 50%; }
+      .ui-text { white-space: nowrap; line-height: 1; text-shadow: 1px 0 var(--c-ink), -1px 0 var(--c-ink), 0 1px var(--c-ink), 0 -1px var(--c-ink); }
+      .ui-small { font-size: calc(var(--u) * 6.5); }
+      .ui-name { font: calc(var(--u) * 8) 'Chonburi', 'Noto Sans Thai Looped', serif; color: var(--c-cream); }
+      .ui-bar-label { display: flex; align-items: center; font-size: calc(var(--u) * 6.5); }
+      .ui-slot-label { display: flex; justify-content: center; align-items: center; }
+      .ui-target { display: none; }
+      .ui-dead { display: none; left: 0; right: 0; bottom: calc(var(--u) * 60); text-align: center; color: var(--c-fire); font-size: calc(var(--u) * 9); }
     </style>
   </head>
   <body>
