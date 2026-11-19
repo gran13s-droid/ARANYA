@@ -1,0 +1,1780 @@
+{
+  "frames": {
+    "archer_r0c0_0": {
+      "frame": {
+        "x": 0,
+        "y": 0,
+        "w": 123,
+        "h": 126
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 123,
+        "h": 126
+      },
+      "duration": 150
+    },
+    "archer_r0c1_1": {
+      "frame": {
+        "x": 123,
+        "y": 0,
+        "w": 122,
+        "h": 126
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 122,
+        "h": 126
+      },
+      "duration": 150
+    },
+    "archer_r0c2_2": {
+      "frame": {
+        "x": 245,
+        "y": 0,
+        "w": 123,
+        "h": 126
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 123,
+        "h": 126
+      },
+      "duration": 150
+    },
+    "archer_r0c3_3": {
+      "frame": {
+        "x": 368,
+        "y": 0,
+        "w": 123,
+        "h": 126
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 123,
+        "h": 126
+      },
+      "duration": 150
+    },
+    "archer_r0c4_4": {
+      "frame": {
+        "x": 491,
+        "y": 0,
+        "w": 122,
+        "h": 126
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 122,
+        "h": 126
+      },
+      "duration": 150
+    },
+    "archer_r0c5_5": {
+      "frame": {
+        "x": 613,
+        "y": 0,
+        "w": 123,
+        "h": 126
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 123,
+        "h": 126
+      },
+      "duration": 150
+    },
+    "archer_r0c6_6": {
+      "frame": {
+        "x": 736,
+        "y": 0,
+        "w": 123,
+        "h": 126
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 123,
+        "h": 126
+      },
+      "duration": 150
+    },
+    "archer_r0c7_7": {
+      "frame": {
+        "x": 859,
+        "y": 0,
+        "w": 122,
+        "h": 126
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 122,
+        "h": 126
+      },
+      "duration": 150
+    },
+    "archer_r0c8_8": {
+      "frame": {
+        "x": 981,
+        "y": 0,
+        "w": 123,
+        "h": 126
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 123,
+        "h": 126
+      },
+      "duration": 150
+    },
+    "archer_r0c9_9": {
+      "frame": {
+        "x": 1104,
+        "y": 0,
+        "w": 122,
+        "h": 126
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 122,
+        "h": 126
+      },
+      "duration": 150
+    },
+    "archer_r0c10_10": {
+      "frame": {
+        "x": 1226,
+        "y": 0,
+        "w": 123,
+        "h": 126
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 123,
+        "h": 126
+      },
+      "duration": 150
+    },
+    "archer_r0c11_11": {
+      "frame": {
+        "x": 1349,
+        "y": 0,
+        "w": 123,
+        "h": 126
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 123,
+        "h": 126
+      },
+      "duration": 150
+    },
+    "archer_r0c12_12": {
+      "frame": {
+        "x": 1472,
+        "y": 0,
+        "w": 122,
+        "h": 126
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 122,
+        "h": 126
+      },
+      "duration": 150
+    },
+    "archer_r0c13_13": {
+      "frame": {
+        "x": 1594,
+        "y": 0,
+        "w": 123,
+        "h": 126
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 123,
+        "h": 126
+      },
+      "duration": 150
+    },
+    "archer_r1c0_14": {
+      "frame": {
+        "x": 0,
+        "y": 126,
+        "w": 123,
+        "h": 110
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 123,
+        "h": 110
+      },
+      "duration": 150
+    },
+    "archer_r1c1_15": {
+      "frame": {
+        "x": 123,
+        "y": 126,
+        "w": 122,
+        "h": 110
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 122,
+        "h": 110
+      },
+      "duration": 150
+    },
+    "archer_r1c2_16": {
+      "frame": {
+        "x": 245,
+        "y": 126,
+        "w": 123,
+        "h": 110
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 123,
+        "h": 110
+      },
+      "duration": 150
+    },
+    "archer_r1c3_17": {
+      "frame": {
+        "x": 368,
+        "y": 126,
+        "w": 123,
+        "h": 110
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 123,
+        "h": 110
+      },
+      "duration": 150
+    },
+    "archer_r1c4_18": {
+      "frame": {
+        "x": 491,
+        "y": 126,
+        "w": 122,
+        "h": 110
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 122,
+        "h": 110
+      },
+      "duration": 150
+    },
+    "archer_r1c5_19": {
+      "frame": {
+        "x": 613,
+        "y": 126,
+        "w": 123,
+        "h": 110
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 123,
+        "h": 110
+      },
+      "duration": 150
+    },
+    "archer_r1c6_20": {
+      "frame": {
+        "x": 736,
+        "y": 126,
+        "w": 123,
+        "h": 110
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 123,
+        "h": 110
+      },
+      "duration": 150
+    },
+    "archer_r1c7_21": {
+      "frame": {
+        "x": 859,
+        "y": 126,
+        "w": 122,
+        "h": 110
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 122,
+        "h": 110
+      },
+      "duration": 150
+    },
+    "archer_r1c8_22": {
+      "frame": {
+        "x": 981,
+        "y": 126,
+        "w": 123,
+        "h": 110
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 123,
+        "h": 110
+      },
+      "duration": 150
+    },
+    "archer_r1c9_23": {
+      "frame": {
+        "x": 1104,
+        "y": 126,
+        "w": 122,
+        "h": 110
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 122,
+        "h": 110
+      },
+      "duration": 150
+    },
+    "archer_r1c10_24": {
+      "frame": {
+        "x": 1226,
+        "y": 126,
+        "w": 123,
+        "h": 110
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 123,
+        "h": 110
+      },
+      "duration": 150
+    },
+    "archer_r1c11_25": {
+      "frame": {
+        "x": 1349,
+        "y": 126,
+        "w": 123,
+        "h": 110
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 123,
+        "h": 110
+      },
+      "duration": 150
+    },
+    "archer_r1c12_26": {
+      "frame": {
+        "x": 1472,
+        "y": 126,
+        "w": 122,
+        "h": 110
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 122,
+        "h": 110
+      },
+      "duration": 150
+    },
+    "archer_r1c13_27": {
+      "frame": {
+        "x": 1594,
+        "y": 126,
+        "w": 123,
+        "h": 110
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 123,
+        "h": 110
+      },
+      "duration": 150
+    },
+    "archer_r2c0_28": {
+      "frame": {
+        "x": 0,
+        "y": 236,
+        "w": 123,
+        "h": 117
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 123,
+        "h": 117
+      },
+      "duration": 150
+    },
+    "archer_r2c1_29": {
+      "frame": {
+        "x": 123,
+        "y": 236,
+        "w": 122,
+        "h": 117
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 122,
+        "h": 117
+      },
+      "duration": 150
+    },
+    "archer_r2c2_30": {
+      "frame": {
+        "x": 245,
+        "y": 236,
+        "w": 123,
+        "h": 117
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 123,
+        "h": 117
+      },
+      "duration": 150
+    },
+    "archer_r2c3_31": {
+      "frame": {
+        "x": 368,
+        "y": 236,
+        "w": 123,
+        "h": 117
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 123,
+        "h": 117
+      },
+      "duration": 150
+    },
+    "archer_r2c4_32": {
+      "frame": {
+        "x": 491,
+        "y": 236,
+        "w": 122,
+        "h": 117
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 122,
+        "h": 117
+      },
+      "duration": 150
+    },
+    "archer_r2c5_33": {
+      "frame": {
+        "x": 613,
+        "y": 236,
+        "w": 123,
+        "h": 117
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 123,
+        "h": 117
+      },
+      "duration": 150
+    },
+    "archer_r2c6_34": {
+      "frame": {
+        "x": 736,
+        "y": 236,
+        "w": 123,
+        "h": 117
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 123,
+        "h": 117
+      },
+      "duration": 150
+    },
+    "archer_r2c7_35": {
+      "frame": {
+        "x": 859,
+        "y": 236,
+        "w": 122,
+        "h": 117
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 122,
+        "h": 117
+      },
+      "duration": 150
+    },
+    "archer_r2c8_36": {
+      "frame": {
+        "x": 981,
+        "y": 236,
+        "w": 123,
+        "h": 117
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 123,
+        "h": 117
+      },
+      "duration": 150
+    },
+    "archer_r2c9_37": {
+      "frame": {
+        "x": 1104,
+        "y": 236,
+        "w": 122,
+        "h": 117
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 122,
+        "h": 117
+      },
+      "duration": 150
+    },
+    "archer_r2c10_38": {
+      "frame": {
+        "x": 1226,
+        "y": 236,
+        "w": 123,
+        "h": 117
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 123,
+        "h": 117
+      },
+      "duration": 150
+    },
+    "archer_r2c11_39": {
+      "frame": {
+        "x": 1349,
+        "y": 236,
+        "w": 123,
+        "h": 117
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 123,
+        "h": 117
+      },
+      "duration": 150
+    },
+    "archer_r2c12_40": {
+      "frame": {
+        "x": 1472,
+        "y": 236,
+        "w": 122,
+        "h": 117
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 122,
+        "h": 117
+      },
+      "duration": 150
+    },
+    "archer_r2c13_41": {
+      "frame": {
+        "x": 1594,
+        "y": 236,
+        "w": 123,
+        "h": 117
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 123,
+        "h": 117
+      },
+      "duration": 150
+    },
+    "archer_r3c0_42": {
+      "frame": {
+        "x": 0,
+        "y": 353,
+        "w": 123,
+        "h": 114
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 123,
+        "h": 114
+      },
+      "duration": 100
+    },
+    "archer_r3c1_43": {
+      "frame": {
+        "x": 123,
+        "y": 353,
+        "w": 122,
+        "h": 114
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 122,
+        "h": 114
+      },
+      "duration": 100
+    },
+    "archer_r3c2_44": {
+      "frame": {
+        "x": 245,
+        "y": 353,
+        "w": 123,
+        "h": 114
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 123,
+        "h": 114
+      },
+      "duration": 100
+    },
+    "archer_r3c3_45": {
+      "frame": {
+        "x": 368,
+        "y": 353,
+        "w": 123,
+        "h": 114
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 123,
+        "h": 114
+      },
+      "duration": 100
+    },
+    "archer_r3c4_46": {
+      "frame": {
+        "x": 491,
+        "y": 353,
+        "w": 122,
+        "h": 114
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 122,
+        "h": 114
+      },
+      "duration": 100
+    },
+    "archer_r3c5_47": {
+      "frame": {
+        "x": 613,
+        "y": 353,
+        "w": 123,
+        "h": 114
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 123,
+        "h": 114
+      },
+      "duration": 100
+    },
+    "archer_r3c6_48": {
+      "frame": {
+        "x": 736,
+        "y": 353,
+        "w": 123,
+        "h": 114
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 123,
+        "h": 114
+      },
+      "duration": 100
+    },
+    "archer_r3c7_49": {
+      "frame": {
+        "x": 859,
+        "y": 353,
+        "w": 122,
+        "h": 114
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 122,
+        "h": 114
+      },
+      "duration": 100
+    },
+    "archer_r3c8_50": {
+      "frame": {
+        "x": 981,
+        "y": 353,
+        "w": 123,
+        "h": 114
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 123,
+        "h": 114
+      },
+      "duration": 100
+    },
+    "archer_r3c9_51": {
+      "frame": {
+        "x": 1104,
+        "y": 353,
+        "w": 122,
+        "h": 114
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 122,
+        "h": 114
+      },
+      "duration": 100
+    },
+    "archer_r3c10_52": {
+      "frame": {
+        "x": 1226,
+        "y": 353,
+        "w": 123,
+        "h": 114
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 123,
+        "h": 114
+      },
+      "duration": 100
+    },
+    "archer_r3c11_53": {
+      "frame": {
+        "x": 1349,
+        "y": 353,
+        "w": 123,
+        "h": 114
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 123,
+        "h": 114
+      },
+      "duration": 100
+    },
+    "archer_r3c12_54": {
+      "frame": {
+        "x": 1472,
+        "y": 353,
+        "w": 122,
+        "h": 114
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 122,
+        "h": 114
+      },
+      "duration": 100
+    },
+    "archer_r3c13_55": {
+      "frame": {
+        "x": 1594,
+        "y": 353,
+        "w": 123,
+        "h": 114
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 123,
+        "h": 114
+      },
+      "duration": 100
+    },
+    "archer_r4c0_56": {
+      "frame": {
+        "x": 0,
+        "y": 467,
+        "w": 123,
+        "h": 107
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 123,
+        "h": 107
+      },
+      "duration": 100
+    },
+    "archer_r4c1_57": {
+      "frame": {
+        "x": 123,
+        "y": 467,
+        "w": 122,
+        "h": 107
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 122,
+        "h": 107
+      },
+      "duration": 100
+    },
+    "archer_r4c2_58": {
+      "frame": {
+        "x": 245,
+        "y": 467,
+        "w": 123,
+        "h": 107
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 123,
+        "h": 107
+      },
+      "duration": 100
+    },
+    "archer_r4c3_59": {
+      "frame": {
+        "x": 368,
+        "y": 467,
+        "w": 123,
+        "h": 107
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 123,
+        "h": 107
+      },
+      "duration": 100
+    },
+    "archer_r4c4_60": {
+      "frame": {
+        "x": 491,
+        "y": 467,
+        "w": 122,
+        "h": 107
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 122,
+        "h": 107
+      },
+      "duration": 100
+    },
+    "archer_r4c5_61": {
+      "frame": {
+        "x": 613,
+        "y": 467,
+        "w": 123,
+        "h": 107
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 123,
+        "h": 107
+      },
+      "duration": 100
+    },
+    "archer_r4c6_62": {
+      "frame": {
+        "x": 736,
+        "y": 467,
+        "w": 123,
+        "h": 107
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 123,
+        "h": 107
+      },
+      "duration": 100
+    },
+    "archer_r4c7_63": {
+      "frame": {
+        "x": 859,
+        "y": 467,
+        "w": 122,
+        "h": 107
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 122,
+        "h": 107
+      },
+      "duration": 100
+    },
+    "archer_r4c8_64": {
+      "frame": {
+        "x": 981,
+        "y": 467,
+        "w": 123,
+        "h": 107
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 123,
+        "h": 107
+      },
+      "duration": 100
+    },
+    "archer_r4c9_65": {
+      "frame": {
+        "x": 1104,
+        "y": 467,
+        "w": 122,
+        "h": 107
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 122,
+        "h": 107
+      },
+      "duration": 100
+    },
+    "archer_r4c10_66": {
+      "frame": {
+        "x": 1226,
+        "y": 467,
+        "w": 123,
+        "h": 107
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 123,
+        "h": 107
+      },
+      "duration": 100
+    },
+    "archer_r4c11_67": {
+      "frame": {
+        "x": 1349,
+        "y": 467,
+        "w": 123,
+        "h": 107
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 123,
+        "h": 107
+      },
+      "duration": 100
+    },
+    "archer_r4c12_68": {
+      "frame": {
+        "x": 1472,
+        "y": 467,
+        "w": 122,
+        "h": 107
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 122,
+        "h": 107
+      },
+      "duration": 100
+    },
+    "archer_r4c13_69": {
+      "frame": {
+        "x": 1594,
+        "y": 467,
+        "w": 123,
+        "h": 107
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 123,
+        "h": 107
+      },
+      "duration": 100
+    },
+    "archer_r5c0_70": {
+      "frame": {
+        "x": 0,
+        "y": 574,
+        "w": 123,
+        "h": 108
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 123,
+        "h": 108
+      },
+      "duration": 100
+    },
+    "archer_r5c1_71": {
+      "frame": {
+        "x": 123,
+        "y": 574,
+        "w": 122,
+        "h": 108
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 122,
+        "h": 108
+      },
+      "duration": 100
+    },
+    "archer_r5c2_72": {
+      "frame": {
+        "x": 245,
+        "y": 574,
+        "w": 123,
+        "h": 108
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 123,
+        "h": 108
+      },
+      "duration": 100
+    },
+    "archer_r5c3_73": {
+      "frame": {
+        "x": 368,
+        "y": 574,
+        "w": 123,
+        "h": 108
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 123,
+        "h": 108
+      },
+      "duration": 100
+    },
+    "archer_r5c4_74": {
+      "frame": {
+        "x": 491,
+        "y": 574,
+        "w": 122,
+        "h": 108
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 122,
+        "h": 108
+      },
+      "duration": 100
+    },
+    "archer_r5c5_75": {
+      "frame": {
+        "x": 613,
+        "y": 574,
+        "w": 123,
+        "h": 108
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 123,
+        "h": 108
+      },
+      "duration": 100
+    },
+    "archer_r5c6_76": {
+      "frame": {
+        "x": 736,
+        "y": 574,
+        "w": 123,
+        "h": 108
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 123,
+        "h": 108
+      },
+      "duration": 100
+    },
+    "archer_r5c7_77": {
+      "frame": {
+        "x": 859,
+        "y": 574,
+        "w": 122,
+        "h": 108
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 122,
+        "h": 108
+      },
+      "duration": 100
+    },
+    "archer_r5c8_78": {
+      "frame": {
+        "x": 981,
+        "y": 574,
+        "w": 123,
+        "h": 108
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 123,
+        "h": 108
+      },
+      "duration": 100
+    },
+    "archer_r5c9_79": {
+      "frame": {
+        "x": 1104,
+        "y": 574,
+        "w": 122,
+        "h": 108
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 122,
+        "h": 108
+      },
+      "duration": 100
+    },
+    "archer_r5c10_80": {
+      "frame": {
+        "x": 1226,
+        "y": 574,
+        "w": 123,
+        "h": 108
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 123,
+        "h": 108
+      },
+      "duration": 100
+    },
+    "archer_r5c11_81": {
+      "frame": {
+        "x": 1349,
+        "y": 574,
+        "w": 123,
+        "h": 108
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 123,
+        "h": 108
+      },
+      "duration": 100
+    },
+    "archer_r5c12_82": {
+      "frame": {
+        "x": 1472,
+        "y": 574,
+        "w": 122,
+        "h": 108
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 122,
+        "h": 108
+      },
+      "duration": 100
+    },
+    "archer_r5c13_83": {
+      "frame": {
+        "x": 1594,
+        "y": 574,
+        "w": 123,
+        "h": 108
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 123,
+        "h": 108
+      },
+      "duration": 100
+    },
+    "archer_r6c0_84": {
+      "frame": {
+        "x": 0,
+        "y": 682,
+        "w": 123,
+        "h": 111
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 123,
+        "h": 111
+      },
+      "duration": 100
+    },
+    "archer_r6c1_85": {
+      "frame": {
+        "x": 123,
+        "y": 682,
+        "w": 122,
+        "h": 111
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 122,
+        "h": 111
+      },
+      "duration": 100
+    },
+    "archer_r6c2_86": {
+      "frame": {
+        "x": 245,
+        "y": 682,
+        "w": 123,
+        "h": 111
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 123,
+        "h": 111
+      },
+      "duration": 100
+    },
+    "archer_r6c3_87": {
+      "frame": {
+        "x": 368,
+        "y": 682,
+        "w": 123,
+        "h": 111
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 123,
+        "h": 111
+      },
+      "duration": 100
+    },
+    "archer_r6c4_88": {
+      "frame": {
+        "x": 491,
+        "y": 682,
+        "w": 122,
+        "h": 111
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 122,
+        "h": 111
+      },
+      "duration": 100
+    },
+    "archer_r6c5_89": {
+      "frame": {
+        "x": 613,
+        "y": 682,
+        "w": 123,
+        "h": 111
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 123,
+        "h": 111
+      },
+      "duration": 100
+    },
+    "archer_r6c6_90": {
+      "frame": {
+        "x": 736,
+        "y": 682,
+        "w": 123,
+        "h": 111
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 123,
+        "h": 111
+      },
+      "duration": 100
+    },
+    "archer_r6c7_91": {
+      "frame": {
+        "x": 859,
+        "y": 682,
+        "w": 122,
+        "h": 111
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 122,
+        "h": 111
+      },
+      "duration": 100
+    },
+    "archer_r6c8_92": {
+      "frame": {
+        "x": 981,
+        "y": 682,
+        "w": 123,
+        "h": 111
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 123,
+        "h": 111
+      },
+      "duration": 100
+    },
+    "archer_r6c9_93": {
+      "frame": {
+        "x": 1104,
+        "y": 682,
+        "w": 122,
+        "h": 111
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 122,
+        "h": 111
+      },
+      "duration": 100
+    },
+    "archer_r6c10_94": {
+      "frame": {
+        "x": 1226,
+        "y": 682,
+        "w": 123,
+        "h": 111
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 123,
+        "h": 111
+      },
+      "duration": 100
+    },
+    "archer_r6c11_95": {
+      "frame": {
+        "x": 1349,
+        "y": 682,
+        "w": 123,
+        "h": 111
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 123,
+        "h": 111
+      },
+      "duration": 100
+    },
+    "archer_r6c12_96": {
+      "frame": {
+        "x": 1472,
+        "y": 682,
+        "w": 122,
+        "h": 111
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 122,
+        "h": 111
+      },
+      "duration": 100
+    },
+    "archer_r6c13_97": {
+      "frame": {
+        "x": 1594,
+        "y": 682,
+        "w": 123,
+        "h": 111
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 123,
+        "h": 111
+      },
+      "duration": 100
+    },
+    "archer_r7c0_98": {
+      "frame": {
+        "x": 0,
+        "y": 793,
+        "w": 114,
+        "h": 123
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 114,
+        "h": 123
+      },
+      "duration": 100
+    },
+    "archer_r7c1_99": {
+      "frame": {
+        "x": 114,
+        "y": 793,
+        "w": 115,
+        "h": 123
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 115,
+        "h": 123
+      },
+      "duration": 100
+    },
+    "archer_r7c2_100": {
+      "frame": {
+        "x": 229,
+        "y": 793,
+        "w": 114,
+        "h": 123
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 114,
+        "h": 123
+      },
+      "duration": 100
+    },
+    "archer_r7c3_101": {
+      "frame": {
+        "x": 343,
+        "y": 793,
+        "w": 115,
+        "h": 123
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 115,
+        "h": 123
+      },
+      "duration": 100
+    },
+    "archer_r7c4_102": {
+      "frame": {
+        "x": 458,
+        "y": 793,
+        "w": 114,
+        "h": 123
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 114,
+        "h": 123
+      },
+      "duration": 100
+    },
+    "archer_r7c5_103": {
+      "frame": {
+        "x": 572,
+        "y": 793,
+        "w": 115,
+        "h": 123
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 115,
+        "h": 123
+      },
+      "duration": 100
+    },
+    "archer_r7c6_104": {
+      "frame": {
+        "x": 687,
+        "y": 793,
+        "w": 114,
+        "h": 123
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 114,
+        "h": 123
+      },
+      "duration": 100
+    },
+    "archer_r7c7_105": {
+      "frame": {
+        "x": 801,
+        "y": 793,
+        "w": 115,
+        "h": 123
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 115,
+        "h": 123
+      },
+      "duration": 100
+    },
+    "archer_r7c8_106": {
+      "frame": {
+        "x": 916,
+        "y": 793,
+        "w": 114,
+        "h": 123
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 114,
+        "h": 123
+      },
+      "duration": 100
+    },
+    "archer_r7c9_107": {
+      "frame": {
+        "x": 1030,
+        "y": 793,
+        "w": 115,
+        "h": 123
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 115,
+        "h": 123
+      },
+      "duration": 100
+    },
+    "archer_r7c10_108": {
+      "frame": {
+        "x": 1145,
+        "y": 793,
+        "w": 114,
+        "h": 123
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 114,
+        "h": 123
+      },
+      "duration": 100
+    },
+    "archer_r7c11_109": {
+      "frame": {
+        "x": 1259,
+        "y": 793,
+        "w": 115,
+        "h": 123
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 115,
+        "h": 123
+      },
+      "duration": 100
+    },
+    "archer_r7c12_110": {
+      "frame": {
+        "x": 1374,
+        "y": 793,
+        "w": 114,
+        "h": 123
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 114,
+        "h": 123
+      },
+      "duration": 100
+    },
+    "archer_r7c13_111": {
+      "frame": {
+        "x": 1488,
+        "y": 793,
+        "w": 115,
+        "h": 123
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 115,
+        "h": 123
+      },
+      "duration": 100
+    },
+    "archer_r7c14_112": {
+      "frame": {
+        "x": 1603,
+        "y": 793,
+        "w": 114,
+        "h": 123
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 114,
+        "h": 123
+      },
+      "duration": 100
+    }
+  },
+  "meta": {
+    "app": "ARANYA archer source-sheet mapping; prototype, visually reviewed row groups",
+    "image": "Aranya’s 120-pose chibi archer sheet.png",
+    "size": {
+      "w": 1717,
+      "h": 916
+    },
+    "frameTags": [
+      {
+        "name": "idle_S",
+        "from": 0,
+        "to": 13,
+        "direction": "forward"
+      },
+      {
+        "name": "walk_E",
+        "from": 14,
+        "to": 27,
+        "direction": "forward"
+      },
+      {
+        "name": "idle_N",
+        "from": 28,
+        "to": 41,
+        "direction": "forward"
+      },
+      {
+        "name": "run_S",
+        "from": 42,
+        "to": 55,
+        "direction": "forward"
+      },
+      {
+        "name": "bow_attack_E",
+        "from": 56,
+        "to": 69,
+        "direction": "forward"
+      },
+      {
+        "name": "bow_attack_S",
+        "from": 70,
+        "to": 83,
+        "direction": "forward"
+      },
+      {
+        "name": "skill_sequence_S",
+        "from": 84,
+        "to": 97,
+        "direction": "forward"
+      },
+      {
+        "name": "hurt_dodge_death_sequence_S",
+        "from": 98,
+        "to": 112,
+        "direction": "forward"
+      }
+    ],
+    "aranya": {
+      "status": "source_mapping_requires_animation_cleanup",
+      "rowCounts": [
+        14,
+        14,
+        14,
+        14,
+        14,
+        14,
+        14,
+        15
+      ],
+      "coordinates": "zero-based pixel rectangles; rows detected from transparent gaps; horizontal cells evenly divided by observed row count",
+      "timing": "provisional preview timings, not synchronized to combat impact frames",
+      "limitations": [
+        "Generated poses are not a verified seamless animation cycle.",
+        "Row 8 contains mixed hurt, dodge and death poses and must be separated before runtime use.",
+        "Some effects cross cell boundaries, especially fire-arrow frames.",
+        "Source cells have varying sizes; current loadAsepriteExport requires uniform cells. Normalize before importing.",
+        "Missing complete N/E/S action sets; no substitute directions or frames invented.",
+        "No meta.import supplied: this is a source mapping, not a validated production atlas."
+      ]
+    }
+  }
+}
