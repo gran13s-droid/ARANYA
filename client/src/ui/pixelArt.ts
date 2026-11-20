@@ -66,6 +66,9 @@ export const SLOT_PX = 36;
 /** Radius of the round icon well inside the diamond (icons are 24 px with a 22 px safe area). */
 export const WELL_R = 11.5;
 
+/** Diamond outline of a skill slot as a CSS clip-path (state tints over a UI-kit frame). */
+export const SLOT_CLIP = 'polygon(50% 6%, 94% 50%, 50% 94%, 6% 50%)';
+
 export type SlotState = 'ready' | 'cooling' | 'rejected';
 
 /**
@@ -266,20 +269,22 @@ export function worldBarFrame(): string {
  * Round portrait (Art Bible 9.2: 48² in a gold circle). `content` paints the
  * inside; the ring is drawn on top.
  */
-export function paintPortrait(ctx: CanvasRenderingContext2D, size: number, content: ((ctx: CanvasRenderingContext2D) => void) | null): void {
+export function paintPortrait(ctx: CanvasRenderingContext2D, size: number, content: ((ctx: CanvasRenderingContext2D) => void) | null, opts: { ring?: boolean; radius?: number } = {}): void {
   const px = plotter(ctx, size, size);
   const c = (size - 1) / 2;
-  const r = size / 2 - 1;
+  // Without the drawn ring (a UI-kit frame is laid over it), the face fills the frame's opening.
+  const r = opts.radius ?? size / 2 - 1;
   ctx.clearRect(0, 0, size, size);
   disc(px, c, c, r, (x, y) => ((x + y) % 2 === 0 ? 'FOREST_DEEP' : 'FOREST'));
   if (content) {
     ctx.save();
     ctx.beginPath();
-    ctx.arc(size / 2, size / 2, r - 2, 0, Math.PI * 2);
+    ctx.arc(size / 2, size / 2, opts.ring === false ? r : r - 2, 0, Math.PI * 2);
     ctx.clip();
     content(ctx);
     ctx.restore();
   }
+  if (opts.ring === false) return;
   ring(px, c, c, r, 'INK');
   ring(px, c, c, r - 1, 'GOLD');
   ring(px, c, c, r - 2, 'EARTH');

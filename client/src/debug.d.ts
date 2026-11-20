@@ -27,6 +27,12 @@ declare global {
       /** Monsters drawn as pixel sprites, and each one's current animation. */
       monsterSprites: number;
       monsterAnims: Record<string, string>;
+      /** Level id, current area, and streamed chunks / dynamic lights in use. */
+      level: string;
+      /** Level editor counts when opened with ?editor. */
+      editor: { props: number; spawns: number; selected: string | null; dirty: boolean } | null;
+      area: string | null;
+      world: { chunks: number; lights: number; billboards: number };
       /** Current click-to-move order. */
       moveOrder: MoveOrder | null;
       /** Enemy projectiles in flight. */

@@ -2,6 +2,7 @@ import {
   MONSTERS,
   TICK_DT,
   fleeSpeed,
+  inSafeZone,
   resolveMove,
   type HitShape,
   type Level,
@@ -111,7 +112,8 @@ function moveToward(host: MonsterHost, m: MonsterBody, dest: Vec3, speed: number
     resolveMove(host.level, m.pos.y, nx, nz) ??
     resolveMove(host.level, m.pos.y, nx, m.pos.z) ??
     resolveMove(host.level, m.pos.y, m.pos.x, nz);
-  if (moved) m.pos = moved;
+  // Monsters never enter safe zones (the hub, the shrine fence): corruption cannot cross them.
+  if (moved && !inSafeZone(host.level, moved)) m.pos = moved;
   return d - step <= stopAt;
 }
 

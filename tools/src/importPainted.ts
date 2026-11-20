@@ -79,7 +79,7 @@ function addOutline(img: Image, ink: PaletteColor): void {
  * alpha). Flat areas (a cream tunic) stay that color instead of averaging
  * towards the dark outline, which reads much more like hand-made pixel art.
  */
-function downscaleMode(src: Image, scale: number, alphaThreshold: number, palette: readonly PaletteColor[]): Image {
+export function downscaleMode(src: Image, scale: number, alphaThreshold: number, palette: readonly PaletteColor[]): Image {
   const w = Math.max(1, Math.round(src.width * scale));
   const h = Math.max(1, Math.round(src.height * scale));
   const out = createImage(w, h);
@@ -123,7 +123,7 @@ function downscaleMode(src: Image, scale: number, alphaThreshold: number, palett
 }
 
 /** 8-connected islands of opaque pixels, as lists of pixel indices. */
-function islands(img: Image): number[][] {
+export function islands(img: Image): number[][] {
   const { width: w, height: h, data } = img;
   const seen = new Uint8Array(w * h);
   const out: number[][] = [];
@@ -154,7 +154,7 @@ function islands(img: Image): number[][] {
 }
 
 /** Removes opaque islands smaller than `minPixels` (bits of neighbouring cells, glow specks). */
-function despeckle(img: Image, minPixels: number): void {
+export function despeckle(img: Image, minPixels: number): void {
   for (const island of islands(img)) if (island.length < minPixels) for (const p of island) img.data.set([0, 0, 0, 0], p * 4);
 }
 

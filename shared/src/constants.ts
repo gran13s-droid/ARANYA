@@ -30,3 +30,10 @@ export const MAX_INPUT_CREDITS = 3;
 
 /** Inputs beyond this queue length are dropped (anti-flood). */
 export const MAX_QUEUED_INPUTS = 10;
+
+/**
+ * Radius (m) of the curse fog around a ศิลาราคี in หุบราคีม่วง (Art Bible 10.13).
+ * The fog drawn by the client and the area the server applies ราคีสะสม in must
+ * use this same value.
+ */
+export const CURSE_STONE_FOG_RADIUS = 6;

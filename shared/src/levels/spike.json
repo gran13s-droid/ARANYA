@@ -1,0 +1,39 @@
+{
+  "version": 1,
+  "id": "spike",
+  "spawn": {"x":0,"y":0,"z":-6},
+  "areas": [
+    {"id":"spike","entry":{"x":0,"y":0,"z":-6},"bounds":[-24,-24,24,24],"fog":{"color":"FOREST_DEEP","density":0.022},"sun":{"color":"CREAM","intensity":0.9},"ambient":{"color":"MOSS","ground":"FOREST_DEEP","intensity":0.55}}
+  ],
+  "polys": [
+    {"id":"ground","surface":"grass","solid":true,"verts":[{"x":-24,"y":0,"z":-24},{"x":24,"y":0,"z":-24},{"x":24,"y":0,"z":24},{"x":-24,"y":0,"z":24}]},
+    {"id":"ramp_a","surface":"stone","solid":true,"verts":[{"x":-10,"y":0,"z":0},{"x":-6,"y":0,"z":0},{"x":-6,"y":3,"z":6},{"x":-10,"y":3,"z":6}]},
+    {"id":"platform_a","surface":"stone","solid":true,"verts":[{"x":-12,"y":3,"z":6},{"x":-4,"y":3,"z":6},{"x":-4,"y":3,"z":14},{"x":-12,"y":3,"z":14}]},
+    {"id":"bridge","surface":"wood","solid":false,"verts":[{"x":-4,"y":3,"z":9},{"x":8,"y":3,"z":9},{"x":8,"y":3,"z":11},{"x":-4,"y":3,"z":11}]},
+    {"id":"platform_b","surface":"stone","solid":true,"verts":[{"x":8,"y":3,"z":6},{"x":14,"y":3,"z":6},{"x":14,"y":3,"z":14},{"x":8,"y":3,"z":14}]}
+  ],
+  "water": [],
+  "props": [
+    {"id":"tree_1","kind":"tree","x":6,"y":0,"z":-6,"rot":0,"scale":1.34},
+    {"id":"tree_2","kind":"tree","x":-14,"y":0,"z":-8,"rot":40,"scale":1.34},
+    {"id":"tree_3","kind":"tree","x":14,"y":0,"z":-2,"rot":80,"scale":1.34}
+  ],
+  "spawns": [
+    {"id":"lostMom_1","species":"lostMom","x":-12,"y":0,"z":-18},
+    {"id":"lostMom_2","species":"lostMom","x":-17,"y":0,"z":-13},
+    {"id":"lostMom_3","species":"lostMom","x":-8,"y":0,"z":-20},
+    {"id":"fireFowl_1","species":"fireFowl","x":16,"y":0,"z":-18},
+    {"id":"fireFowl_2","species":"fireFowl","x":19,"y":0,"z":-13},
+    {"id":"khamod_1","species":"khamod","x":18,"y":0,"z":3},
+    {"id":"khamod_2","species":"khamod","x":3,"y":0,"z":18}
+  ],
+  "dummies": [
+    {"id":"dummy_fire","element":"fire","x":-6,"y":0,"z":-14},
+    {"id":"dummy_smoke","element":"smoke","x":-2,"y":0,"z":-14},
+    {"id":"dummy_jade","element":"jade","x":2,"y":0,"z":-14},
+    {"id":"dummy_dark","element":"dark","x":6,"y":0,"z":-14,"cursed":true},
+    {"id":"dummy_sparring","element":"smoke","x":12,"y":0,"z":-10,"sparring":true}
+  ],
+  "safeZones": [],
+  "lights": []
+}

@@ -1,10 +1,10 @@
-import { HOTBAR, type Element, type HotbarSkill } from '@aranya/shared';
+import { HOTBAR, type Element, type HotbarSkill, type UiAtlasJson } from '@aranya/shared';
 import { t, type MessageKey } from '../i18n.ts';
 import { drawDigits, textWidth } from './bitmapFont.ts';
 import { color } from '../palette.ts';
 import {
   BAR_EXP, BAR_HP, BAR_RESOURCE, barTail, digits, elementGem, ICON_PX, levelBadge, paintBar, paintGem, paintPortrait,
-  skillIcon, SLOT_PX, slotFrame, uiPixelSize, WELL_R, type BarStyle, type SlotState,
+  skillIcon, SLOT_CLIP, SLOT_PX, slotFrame, uiPixelSize, WELL_R, type BarStyle, type SlotState,
 } from './pixelArt.ts';
 
 /** PC keys for the hotbar slots 1-7 (GDD 4.3). Left mouse: click locks a target, hold attacks. */
@@ -39,6 +39,37 @@ export interface HudTarget {
   element: Element | null;
 }
 
+/** UI kit frames cut from the concept (import-ui); the HUD uses its code-drawn frames until they load. */
+export interface UiRef {
+  atlas: UiAtlasJson;
+  image: HTMLImageElement;
+}
+
+type UiFrame = UiAtlasJson['frames'][string];
+
+/** One atlas frame as its own image (data URL), cached per name. */
+const pieceCache = new Map<string, string>();
+function piece(ui: UiRef, name: string): string | null {
+  const f = ui.atlas.frames[name];
+  if (!f) return null;
+  let url = pieceCache.get(name);
+  if (!url) {
+    const c = document.createElement('canvas');
+    c.width = f.frame.w;
+    c.height = f.frame.h;
+    c.getContext('2d')!.drawImage(ui.image, f.frame.x, f.frame.y, f.frame.w, f.frame.h, 0, 0, f.frame.w, f.frame.h);
+    url = c.toDataURL('image/png');
+    pieceCache.set(name, url);
+  }
+  return url;
+}
+
+/** Potions sit in round slots (UI kit concept, image 21), skills in diamonds. */
+const ROUND_SLOTS: ReadonlySet<HotbarSkill> = new Set(['potion', 'manaPotion']);
+
+const AREA_BANNER_MS = 3200;
+const TOAST_MS = 1600;
+
 /** Layout in 640x360 UI pixels (Art Bible 9.1-9.2). */
 const UI = {
   margin: 6,
@@ -65,9 +96,11 @@ export class Hud {
   private readonly portrait: HTMLCanvasElement;
   private readonly hotbar: HTMLDivElement;
   private readonly deadEl: HTMLDivElement;
-  private readonly slots = new Map<HotbarSkill, { frame: HTMLImageElement; shade: HTMLDivElement; state: SlotState; rejectedUntil: number }>();
+  private readonly slots = new Map<HotbarSkill, { el: HTMLDivElement; frame: HTMLImageElement; tint: HTMLDivElement; shade: HTMLDivElement; state: SlotState; rejectedUntil: number }>();
+  private ui: UiRef | null = null;
+  private portraitFace: ((ctx: CanvasRenderingContext2D) => void) | null = null;
   private readonly written = new Map<string, string>();
-  private target: { root: HTMLDivElement; name: HTMLSpanElement; level: HTMLSpanElement; gem: HTMLImageElement; bar: BarView; portrait: HTMLCanvasElement } | null = null;
+  private target: { root: HTMLDivElement; name: HTMLSpanElement; level: HTMLSpanElement; gem: HTMLImageElement; bar: BarView; portrait: HTMLCanvasElement; ring: HTMLImageElement | null } | null = null;
 
   constructor(private readonly root: HTMLElement) {
     root.innerHTML = '';
@@ -110,14 +143,18 @@ export class Hud {
       const shade = el('div', 'ui-shade');
       const d = WELL_R * 2 + 1;
       place(shade, SLOT_PX / 2 - d / 2, SLOT_PX / 2 - d / 2, d, d);
+      // Cooling / rejected tint over a UI-kit frame (the code-drawn frames have their own state art).
+      const tint = el('div', 'ui-slot-tint');
+      place(tint, 0, 0, SLOT_PX, SLOT_PX);
+      tint.style.clipPath = ROUND_SLOTS.has(skill) ? 'circle(40% at 50% 50%)' : SLOT_CLIP;
       const key = img(digits(HOTBAR_KEYS[skill].label, 'GOLD'), 7, 9);
       place(key, 2, 2);
       const label = el('span', 'ui-text ui-small ui-slot-label');
       label.textContent = t(`skillShort.${skill}` as MessageKey);
       place(label, -1, SLOT_PX, UI.slotPitch, UI.labelH);
-      slot.append(frame, icon, shade, key, label);
+      slot.append(frame, icon, shade, tint, key, label);
       this.hotbar.append(slot);
-      this.slots.set(skill, { frame, shade, state: 'ready', rejectedUntil: 0 });
+      this.slots.set(skill, { el: slot, frame, tint, shade, state: 'ready', rejectedUntil: 0 });
     });
 
     this.deadEl = el('div', 'ui-text ui-dead');
@@ -143,12 +180,70 @@ export class Hud {
   /** Paints the hero's face into the portrait from a frame of the character atlas. */
   setPortrait(image: CanvasImageSource, frame: { x: number; y: number; w: number; h: number }, pivotY: number): void {
     const size = UI.portrait;
-    paintPortrait(this.portrait.getContext('2d')!, size, (ctx) => {
+    this.portraitFace = (ctx) => {
       // Head and shoulders: the top of a standing 64 px frame, centered.
       const crop = Math.round(size * 0.85);
       const top = Math.max(0, pivotY - 58);
       ctx.drawImage(image, frame.x + (frame.w - crop) / 2, frame.y + top, crop, crop, (size - crop) / 2, 4, crop, crop);
-    });
+    };
+    this.paintPortraitCanvas();
+  }
+
+  private paintPortraitCanvas(): void {
+    const pf = this.ui?.atlas.frames.portrait;
+    const opts = pf?.hole ? { ring: false, radius: pf.hole[2] * pf.frame.h } : {};
+    paintPortrait(this.portrait.getContext('2d')!, UI.portrait, this.portraitFace, opts);
+  }
+
+  /**
+   * Switches to the UI kit frames cut from the concept (image 21, import-ui):
+   * portrait ring, bar frames with a ประจำยาม cap and an arrow tip, diamond
+   * skill slots and round potion slots. Fills, icons and digits stay code-drawn.
+   */
+  useRefArt(ui: UiRef): void {
+    this.ui = ui;
+    const f = ui.atlas.frames;
+    // Portrait: the ring frame on top, its opening centred on the face.
+    if (f.portrait) {
+      this.paintPortraitCanvas();
+      const ring = img(piece(ui, 'portrait')!, f.portrait.frame.w, f.portrait.frame.h);
+      const hole = f.portrait.hole ?? [0.5, 0.5, 0.4];
+      place(ring, UI.portrait / 2 - hole[0] * f.portrait.frame.h, UI.portrait / 2 - hole[1] * f.portrait.frame.h);
+      this.portrait.after(ring);
+    }
+    if (f.bar) {
+      this.hpBar.useFrame(ui, f.bar);
+      this.resBar.useFrame(ui, f.bar);
+      place(this.hpBar.el, UI.bars.x, UI.bars.hpY - 1);
+      place(this.resBar.el, UI.bars.x, UI.bars.resY);
+    }
+    if (f.barThin) this.expBar.useFrame(ui, f.barThin);
+    this.expBar.set(0, 1, false);
+    for (const [skill, slot] of this.slots) {
+      const name = ROUND_SLOTS.has(skill) ? 'slotRound' : 'slot';
+      const fr = f[name];
+      const url = piece(ui, name);
+      if (!fr || !url) continue;
+      slot.frame.src = url;
+      place(slot.frame, (SLOT_PX - fr.frame.w) / 2, (SLOT_PX - fr.frame.h) / 2, fr.frame.w, fr.frame.h);
+      // A round frame goes over its icon (the ring overlaps the bottle); a diamond stays behind.
+      if (ROUND_SLOTS.has(skill)) slot.el.insertBefore(slot.frame, slot.tint);
+      slot.state = 'ready';
+    }
+    if (this.target) this.applyTargetRef(this.target);
+  }
+
+  private applyTargetRef(v: NonNullable<Hud['target']>): void {
+    const ui = this.ui;
+    const fr = ui?.atlas.frames.targetRing;
+    if (!ui || !fr || v.ring) return;
+    const ring = img(piece(ui, 'targetRing')!, fr.frame.w, fr.frame.h);
+    const hole = fr.hole ?? [0.5, 0.5, 0.4];
+    place(ring, UI.targetPortrait / 2 - hole[0] * fr.frame.h, UI.targetPortrait / 2 - hole[1] * fr.frame.h);
+    v.portrait.after(ring);
+    v.ring = ring;
+    if (ui.atlas.frames.bar) v.bar.useFrame(ui, ui.atlas.frames.bar);
+    this.written.delete('targetGem');
   }
 
   private write(key: string, value: string, apply: (v: string) => void): void {
@@ -169,7 +264,8 @@ export class Hud {
       const state: SlotState = now < slot.rejectedUntil ? 'rejected' : k > 0 ? 'cooling' : 'ready';
       if (state !== slot.state) {
         slot.state = state;
-        slot.frame.src = slotFrame(state);
+        if (this.ui) slot.tint.style.background = state === 'rejected' ? 'var(--tint-reject)' : state === 'cooling' ? 'var(--tint-cool)' : 'none';
+        else slot.frame.src = slotFrame(state);
       }
     }
   }
@@ -186,7 +282,9 @@ export class Hud {
       v.gem.style.display = e ? 'block' : 'none';
       if (e) v.gem.src = elementGem(e as Element, 9);
       // Placeholder portrait: the element gem until monster portraits exist (tracker U-03).
-      paintPortrait(v.portrait.getContext('2d')!, UI.targetPortrait, e ? (ctx) => paintGem(ctx, e as Element, 17, 7, 7) : null);
+      const fr = this.ui?.atlas.frames.targetRing;
+      const opts = fr?.hole && v.ring ? { ring: false, radius: fr.hole[2] * fr.frame.h } : {};
+      paintPortrait(v.portrait.getContext('2d')!, UI.targetPortrait, e ? (ctx) => paintGem(ctx, e as Element, 17, 7, 7) : null, opts);
     });
     v.bar.set(target.hp, target.maxHp, true);
   }
@@ -205,9 +303,44 @@ export class Hud {
     place(bar.el, UI.target.barX - 6, UI.target.barY);
     root.append(bar.el, portrait, name, level, gem);
     this.root.append(root);
-    this.target = { root, name, level, gem, bar, portrait };
+    this.target = { root, name, level, gem, bar, portrait, ring: null };
+    this.applyTargetRef(this.target);
     this.layout();
     return this.target;
+  }
+
+  private areaEl: HTMLDivElement | null = null;
+  private areaTimer: ReturnType<typeof setTimeout> | null = null;
+
+  /** Area name banner when the player enters another area (Art Bible 10.5), fades after a few seconds. */
+  showArea(name: string, sub: string): void {
+    if (!this.areaEl) {
+      this.areaEl = el('div', 'ui-area');
+      this.areaEl.append(el('span', 'ui-text ui-area-name'), el('span', 'ui-text ui-small ui-area-sub'));
+      this.root.append(this.areaEl);
+    }
+    const area = this.areaEl;
+    (area.children[0] as HTMLElement).textContent = name;
+    (area.children[1] as HTMLElement).textContent = sub;
+    area.classList.add('show');
+    if (this.areaTimer) clearTimeout(this.areaTimer);
+    this.areaTimer = setTimeout(() => area.classList.remove('show'), AREA_BANNER_MS);
+  }
+
+  private toastEl: HTMLDivElement | null = null;
+  private toastTimer: ReturnType<typeof setTimeout> | null = null;
+
+  /** Short message above the skill bar (e.g. "no fighting here"); repeated calls just extend it. */
+  toast(text: string): void {
+    if (!this.toastEl) {
+      this.toastEl = el('div', 'ui-text ui-toast');
+      this.root.append(this.toastEl);
+    }
+    const toast = this.toastEl;
+    toast.textContent = text;
+    toast.classList.add('show');
+    if (this.toastTimer) clearTimeout(this.toastTimer);
+    this.toastTimer = setTimeout(() => toast.classList.remove('show'), TOAST_MS);
   }
 
   /** Red slot frame for a moment when the server rejected the cast. */
@@ -220,34 +353,76 @@ export class Hud {
 /** One framed bar canvas: fill + bitmap "hp/max" digits + optional vector label. */
 class BarView {
   readonly el: HTMLDivElement;
-  private readonly ctx: CanvasRenderingContext2D;
+  private readonly canvasEl: HTMLCanvasElement;
+  private ctx: CanvasRenderingContext2D;
+  private readonly label: HTMLSpanElement | null = null;
   private last = '';
+  private h: number;
+  private readonly total: number;
+  private frame: { ui: UiRef; f: UiFrame } | null = null;
 
-  constructor(private readonly w: number, private readonly h: number, private readonly style: BarStyle, label: string | null) {
-    const total = w + barTail(h, style);
+  constructor(private readonly w: number, h: number, private readonly style: BarStyle, label: string | null) {
+    this.h = h;
+    this.total = w + barTail(h, style);
     this.el = el('div', 'ui-bar');
-    this.el.style.width = `calc(var(--u) * ${total})`;
+    this.el.style.width = `calc(var(--u) * ${this.total})`;
     this.el.style.height = `calc(var(--u) * ${h})`;
-    const c = canvas(total, h);
-    place(c, 0, 0);
-    this.ctx = c.getContext('2d')!;
-    this.el.append(c);
+    this.canvasEl = canvas(this.total, h);
+    place(this.canvasEl, 0, 0);
+    this.ctx = this.canvasEl.getContext('2d')!;
+    this.el.append(this.canvasEl);
     if (label) {
-      const span = el('span', 'ui-text ui-bar-label');
-      span.textContent = label;
-      place(span, 4, 0, undefined, h);
-      this.el.append(span);
+      this.label = el('span', 'ui-text ui-bar-label');
+      this.label.textContent = label;
+      place(this.label, 4, 0, undefined, h);
+      this.el.append(this.label);
     }
+  }
+
+  /** Draws this bar with a UI-kit frame (3-slice: the caps keep their size, the middle stretches). */
+  useFrame(ui: UiRef, f: UiFrame): void {
+    this.frame = { ui, f };
+    this.h = f.frame.h;
+    this.canvasEl.height = this.h;
+    this.canvasEl.style.height = `calc(var(--u) * ${this.h})`;
+    this.el.style.height = `calc(var(--u) * ${this.h})`;
+    this.ctx = this.canvasEl.getContext('2d')!;
+    if (this.label) place(this.label, Math.round((f.slice?.[0] ?? 0.1) * f.frame.w) + 1, 0, undefined, this.h);
+    this.last = '';
   }
 
   set(value: number, max: number, showDigits: boolean): void {
     const key = `${value}/${max}`;
     if (key === this.last) return;
     this.last = key;
-    paintBar(this.ctx, this.w, this.h, max > 0 ? value / max : 0, this.style);
+    const k = max > 0 ? value / max : 0;
+    let digitsRight = this.w - 2;
+    if (this.frame) {
+      const { ui, f } = this.frame;
+      const W = this.total;
+      const { x, y, w, h } = f.frame;
+      const capL = Math.round((f.slice?.[0] ?? 0.1) * w);
+      const capR = Math.round((f.slice?.[1] ?? 0.06) * w);
+      const ctx = this.ctx;
+      ctx.clearRect(0, 0, W, h);
+      ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(ui.image, x, y, capL, h, 0, 0, capL, h);
+      ctx.drawImage(ui.image, x + capL, y, w - capL - capR, h, capL, 0, W - capL - capR, h);
+      ctx.drawImage(ui.image, x + w - capR, y, capR, h, W - capR, 0, capR, h);
+      const [il, it, ir, ib] = f.inner ?? [0.1, 0.25, 0.06, 0.25];
+      const x0 = Math.round(il * w), x1 = W - Math.round(ir * w), y0 = Math.round(it * h), y1 = h - Math.round(ib * h);
+      const fillW = Math.round((x1 - x0) * Math.min(1, Math.max(0, k)));
+      ctx.fillStyle = color(this.style.fill).hex;
+      ctx.fillRect(x0, y0, fillW, y1 - y0);
+      ctx.fillStyle = color(this.style.light).hex;
+      for (let px = x0; px < x0 + fillW; px += 2) ctx.fillRect(px, y0, 1, 1); // dithered highlight row
+      digitsRight = x1 - 2;
+    } else {
+      paintBar(this.ctx, this.w, this.h, k, this.style);
+    }
     if (showDigits && this.h >= 9) {
       const text = `${Math.max(0, Math.round(value))}/${max}`;
-      drawDigits(this.ctx, text, this.w - 2 - textWidth(text), Math.floor((this.h - 7) / 2), color('CREAM').hex, color('INK').hex);
+      drawDigits(this.ctx, text, digitsRight - textWidth(text), Math.floor((this.h - 7) / 2), color('CREAM').hex, color('INK').hex);
     }
   }
 }

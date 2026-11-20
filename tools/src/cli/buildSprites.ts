@@ -1,12 +1,12 @@
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdirSync, readdirSync, writeFileSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { basename, join } from 'node:path';
 import { MONSTER_ANIMS, MONSTER_FRAME_PX, PLAYER_ANIMS, PLAYER_FRAME_PX, type AnimSpec, type AtlasIndex } from '@aranya/shared';
 import { loadAsepriteExport } from '../aseprite.ts';
 import { buildAtlas } from '../buildAtlas.ts';
 import { writePng } from '../image.ts';
 import { convertPaintedSheet } from '../importPainted.ts';
-import { CHARACTER_SOURCES, MONSTER_SOURCES, SPRITE_OUTPUT, loadPalette } from '../paths.ts';
+import { CHARACTER_SOURCES, MONSTER_SOURCES, PROP_SOURCES, SPRITE_OUTPUT, UI_SOURCES, loadPalette } from '../paths.ts';
 
 /**
  * Builds runtime atlases for every character in art/source/characters (64 px,
@@ -88,6 +88,19 @@ for (const { dir, frameSize, anims } of GROUPS) {
     index.atlases.push(name);
     console.log(`[build-sprites] ${name}: ${sheet.frames.length} frames (${result.uniqueFrames} unique) -> ${result.image.width}x${result.image.height} atlas`);
   }
+}
+
+// Prop billboard and UI atlases (import-props, import-ui) are copied as they are.
+for (const [dir, f] of [PROP_SOURCES, UI_SOURCES].flatMap((d) => (existsSync(d) ? readdirSync(d) : []).map((f) => [d, f] as const))) {
+  if (!f.endsWith('.json') || f.endsWith('.import.json')) continue;
+  const name = basename(f, '.json');
+  const json = JSON.parse(readFileSync(join(dir, f), 'utf8')) as { meta?: { kind?: string; image?: string } };
+  if ((json.meta?.kind !== 'props' && json.meta?.kind !== 'ui') || !json.meta.image) continue;
+  copyFileSync(join(dir, json.meta.image), join(SPRITE_OUTPUT, json.meta.image));
+  writeFileSync(join(SPRITE_OUTPUT, f), JSON.stringify(json));
+  index.atlases.push(name);
+  built++;
+  console.log(`[build-sprites] ${name}: ${json.meta.kind} atlas copied`);
 }
 
 writeFileSync(join(SPRITE_OUTPUT, 'index.json'), JSON.stringify(index));

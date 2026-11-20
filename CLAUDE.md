@@ -28,9 +28,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
   - ปรับตามผู้ใช้: แถบลัดปุ่ม 1–7 (ยา HP + ยามานา), คลิกซ้ายล็อกเป้า / กดค้างโจมตี, แถบทรัพยากรแสดงเป็น "มานา"
   - **UI placeholder แบบพิกเซล** ตามภาพที่ 2 (`ref_02_ui_effect.png`): HUD ผู้เล่น, แถบสกิลข้าวหลามตัด, แผงเป้าหมาย และแถบ HP เหนือหัวมอน วาดจากโค้ด รอศิลปินทำ U-03 / U-05 / U-06 (ขนาดไอคอน 24 หรือ 32 ยังไม่ได้ตัดสิน ดู tracker U-06)
   - **คลิกเดิน / คลิกมอนเพื่อเดินเข้าไปตี** (GDD 4.3 v0.8) ยังไม่มีการหาเส้นทาง รอ navmesh F-08
+  - **ของในหมู่บ้านและพืชเป็นภาพแบน billboard** ที่ตัดจากภาพ concept 22–29 ด้วย `import-props` (ต้นแบบ) ส่วนพื้น แท่น ลาน และทางเดินยังเป็น 3D
   - **ลูกมอมหลงทางเป็นสไปรต์ 48 px** แปลงจาก sheet AI ของผู้ใช้ด้วย `import-monster` (ต้นแบบเท่านั้น) ส่วนไก่ป่าเพลิงกับผีโขมดยังเป็นโมเดล low-poly
   - ตรวจ concept UI kit + VFX หยก (ภาพที่ 21, Art Bible 9.6) แล้ว ยังรอตัดสินเรื่องบ่อวงกลมในช่องสกิล ขนาดไอคอน (U-06) และช่องยาทรงวงกลม
-- ถัดไป: **Step 2.1 ฉากโซน 1** (ดูข้อขัดแย้งในตารางท้ายไฟล์ โดยเฉพาะข้อ ❓ เรื่องรูปแบบ level data)
+  - **Step 2.1 ฉากโซน 1 (greybox)**: ครบ 6 พื้นที่ต่อกันเป็นผืนเดียว ข้อมูลอยู่ใน level JSON, โหลด prop ทีละ chunk, หมอก แสง และ particle ตามพื้นที่, ป้ายชื่อพื้นที่, เขตปลอดภัย (หมู่บ้านและในรั้วศาล) และ editor `?editor` ส่วนชิ้นงาน 3D ยังเป็นรูปทรงจากโค้ด และพื้นที่ดงรากไทรกับหุบราคียังไม่มีมอน (สปีชีส์ยังไม่ได้ทำ)
+- ถัดไป: **Step 2.2 บอสนาค** (มีข้อ ❓ ในตารางท้ายไฟล์ ต้องถามผู้ใช้ก่อน)
 - **ผู้ใช้สั่งข้าม Step 1.4 (ทดสอบ 20 คน) ไปก่อน** ยังต้องกลับมาทำ: bot แบบ headless 20–50 ตัว วัด CPU/RAM, bandwidth ต่อคน และ tick time (`?bots=200` เป็นแค่ตัวละครจำลองฝั่ง client ไว้ทดสอบการวาด ใช้แทนไม่ได้)
 - ค่าชั่วคราว (ความเร็ววิ่ง, ค่าพลัง, ตัวคูณคอมโบ ฯลฯ) อยู่ใน GDD 4.4 ถ้าแก้ตัวเลขใน `/shared` ต้องแก้ตาราง GDD 4.4 ให้ตรงกันด้วย
 - **ข้อเสนอที่ยังไม่อนุมัติ** อยู่ใน Art Bible หัวข้อ 13 (แถวที่สถานะเป็น "เสนอ") ยังไม่ใช่ canon ห้ามนำไปเขียนโค้ดหรือแก้ GDD จนกว่าผู้ใช้จะอนุมัติ ข้อที่ขวางงานอยู่คือข้อ 5 (pipeline 3D → พิกเซล) ซึ่งต้องตัดสินก่อนเริ่ม `C-02`
@@ -83,14 +85,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | `pnpm install` | ติดตั้ง dependency ทั้ง workspace |
 | `pnpm assets` | สร้าง atlas จาก `art/source/characters/*` (64 px, `PLAYER_ANIMS`) และ `art/source/monsters/mon_*` (48 px, `MONSTER_ANIMS`) ไปที่ `client/public/assets/sprites/` (gitignore) พร้อม `index.json` ที่บอกว่ามี atlas อะไรบ้าง client จะโหลดเฉพาะ atlas ที่อยู่ในรายชื่อนี้ ถ้าสไปรต์ผิดกฎ Art Bible จะ error และ exit 1 ส่วน `dev`, `build` และ `test:e2e` รันคำสั่งนี้ให้ก่อนอัตโนมัติ |
 | `pnpm --filter @aranya/tools import-hero` | สร้าง `art/source/characters/chr_placeholder.*` จาก sheet รายทิศของผู้ใช้ `art/source/characters/hero_ai/hero_{S,E,N}.png` (ผัง 6 คอลัมน์ × 9 แถว = ท่าตามลำดับ `PLAYER_ANIMS`; ถ้า sheet ข้ามหรือสลับแถว ให้ระบุลำดับใน `hero_<dir>.rows.json`) โดยตัดช่องที่ช่องว่างระหว่างตัวละคร แปลงเป็น 64×64 พาเลตต์ 15 สี และย่อแต่ละทิศให้ท่ายืนสูงเท่ากัน ท่าหรือทิศที่ไม่มีใช้ทิศ E แทน และจะเตือนถ้าตัดโดนตัวละคร **นี่คือแหล่งที่มาของตัวละครในเกมตอนนี้** |
+| `pnpm --filter @aranya/tools import-props` | สร้าง `art/source/props/props_ref.{png,json}` (atlas ภาพแบนของ prop) จากภาพ concept ตามกรอบตัดใน `art/source/props/props.import.json` (`kind`, `source`, `rect`, `heightM`, `offsetZ`) โดยลบพื้นขาว ทั้งพื้นขาวที่ปิดล้อมอยู่ข้างในและเงาสีเทา เก็บไว้เฉพาะตัววัตถุ ย่อให้สูง `heightM` เมตรที่ 32 px/m แล้วแปลงเข้าพาเลตต์ prop kind ที่ไม่มีในไฟล์นี้ยังเป็นโมเดล 3D ใช้ได้ช่วงต้นแบบเท่านั้น (Art Bible 2) |
+| `pnpm --filter @aranya/tools import-ui` | สร้าง `art/source/ui/ui_ref.{png,json}` (กรอบ UI) จาก UI kit ภาพที่ 21 ตามไฟล์ `art/source/ui/ui.import.json` (`heightPx` เป็นพิกเซล UI 640×360, `hole` = ช่องโปร่งกลางวง, `slice` = หัวและท้ายแถบที่ไม่ยืด, `inner` = พื้นที่เติมสี) ถ้าไม่มี atlas นี้ HUD จะใช้กรอบที่วาดจากโค้ด |
 | `pnpm --filter @aranya/tools import-monster [species]` | สร้าง `art/source/monsters/mon_<species>.*` จาก `art/source/monsters/<species>_ai/<species>_{S,E,N}.png` (ผัง 5 คอลัมน์ × 5 แถว: idle, move, attack, hit, death) ลบพื้นขาวทึบออก วางทุกช่องบนกริดเดียวกัน แปลงเป็น 48×48 และใช้ทิศที่มีแทนทิศที่ขาด (มอนสมมาตรมีแค่ S ได้) ตั้งค่าใน `<species>.import.json`: `targetHeight`, `rows` ต่อทิศ (`null` = ข้ามแถว), `isolate` (เฟรมที่ตัดทุกอย่างนอกกรอบท่า idle ออก เช่นลูกไฟ) และ `dropColors` |
 | `pnpm --filter @aranya/tools gen-placeholder` | สร้างสไปรต์ที่วาดจากโค้ดแบบเดิม **เขียนทับ** `chr_placeholder.*` ที่ได้จาก `import-hero` ใช้เฉพาะเมื่อต้องการกลับไปใช้แบบวาดจากโค้ด |
-| `pnpm dev` | รัน server (`tsx watch`, ws://localhost:2567) กับ client (Vite, http://localhost:5173) พร้อมกัน เปิด 2 แท็บเพื่อทดสอบหลายคน |
+| `pnpm dev` | รัน server (`tsx watch ... --dev`, ws://localhost:2567) กับ client (Vite, http://localhost:5173) พร้อมกัน เปิด 2 แท็บเพื่อทดสอบหลายคน ค่าเริ่มต้นคือโซน 1 ส่วน `?level=spike` คือลานทดสอบเดิมที่มีหุ่นฝึก |
 | `pnpm build` | build client (`client/dist`) และ bundle server (`server/dist/index.js`, รันด้วย `pnpm --filter @aranya/server start`) |
 | `pnpm typecheck` | `tsc` ทุก package + `e2e/` (strict + `noUncheckedIndexedAccess`) |
 | `pnpm lint` | ESLint (typescript-eslint strict) ทั้ง repo |
 | `pnpm test` | unit test (Vitest) ทุกไฟล์ `*.test.ts` ใน shared, server และ client ใช้เวลาไม่ถึง 1 วิ |
-| `pnpm test:e2e` | e2e (60–100 วิ): `e2e/setup.ts` เปิด game server จริง (พอร์ต 2577) + Vite (พอร์ต 5183) เอง แล้วรัน `multiplayer.e2e.ts` (client หลายตัวแบบไม่มีหน้าจอ: sync, input ผิดรูปแบบ, flood, ออกจากห้อง, ฟันหุ่นฝึก, cast ที่ถูกปฏิเสธ) และ `browser.e2e.ts` (2 แท็บ, วาด 200 ตัว, ต่อสู้ด้วยแถบลัด, คลิกเดินและคลิกหุ่นเพื่อเข้าไปตี ใช้ `window.__aranyaProject()` แปลงจุดในโลกเป็นพิกัดบนจอ ใน Edge/Chrome ที่ติดตั้งในเครื่องผ่าน playwright-core ภาพหน้าจอเก็บใน `e2e/.artifacts/` และข้ามเองถ้าไม่พบเบราว์เซอร์ หรือกำหนดเองด้วย `E2E_BROWSER_PATH`) ปิด process เองทั้งหมดเมื่อจบ |
+| `pnpm test:e2e` | e2e (100–130 วิ): `e2e/setup.ts` เปิด game server จริง (พอร์ต 2577) + Vite (พอร์ต 5183) เอง แล้วรัน `multiplayer.e2e.ts` (client หลายตัวแบบไม่มีหน้าจอ: sync, input ผิดรูปแบบ, flood, ออกจากห้อง, ฟันหุ่นฝึก, cast ที่ถูกปฏิเสธ) และ `browser.e2e.ts` (2 แท็บ, วาด 200 ตัว, ต่อสู้ด้วยแถบลัด, คลิกเดินและคลิกหุ่นเพื่อเข้าไปตี, โซน 1 ครบทุกพื้นที่ผ่าน `?at=`, เขตปลอดภัย และ editor ใช้ `window.__aranyaProject()` แปลงจุดในโลกเป็นพิกัดบนจอ ใน Edge/Chrome ที่ติดตั้งในเครื่องผ่าน playwright-core ภาพหน้าจอเก็บใน `e2e/.artifacts/` และข้ามเองถ้าไม่พบเบราว์เซอร์ หรือกำหนดเองด้วย `E2E_BROWSER_PATH`) ปิด process เองทั้งหมดเมื่อจบ |
 | `pnpm check` | lint + typecheck + unit test (ใช้ก่อน commit) ประมาณ 15–20 วิ ส่วนครั้งแรกหลัง install ราว 70 วิ ซึ่งส่วนใหญ่เป็นเวลาของ typecheck |
 | `pnpm test:all` | `check` + `test:e2e` |
 | `pnpm vitest run shared/src/movement.test.ts` | รัน unit test ไฟล์เดียว |
@@ -100,6 +104,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 เครื่องมือเฉพาะตอน dev (ไม่อยู่ใน production build):
 - `window.__aranyaDebug()`: ให้ browser e2e อ่านตำแหน่ง, ท่า, draw call, frame time, HP, มานา, HP และตำแหน่งของเป้า, เป้าที่ล็อก, คำสั่งคลิกเดิน, จำนวนเลขดาเมจ และ cast ack ล่าสุด ส่วน `window.__aranyaProject(x, y, z)` แปลงจุดในโลกเป็นพิกเซล CSS สำหรับคลิก
 - `?bots=200`: เพิ่มตัวละครจำลองฝั่ง client เพื่อทดสอบการวาด
+- `?at=<area>` (เช่น `?at=valley`): เริ่มที่ `entry` ของพื้นที่นั้น server ยอมให้ใช้เฉพาะเมื่อรันด้วย `--dev` (`pnpm dev` และ e2e) production ไม่สนค่านี้
+- `?editor`: editor ของ level (`client/src/dev/editor.ts`) Shift+คลิกวาง, คลิกเลือก, Q/E หมุน, [ ] ขนาด, I J K L เลื่อน, Delete ลบ, Ctrl+S บันทึก การบันทึกตรวจด้วย `parseLevelFile` ในเบราว์เซอร์ก่อน แล้วเขียนไฟล์ผ่าน endpoint `/__aranya/level/<id>` ของ Vite (`client/vite.config.ts`, มีเฉพาะตอน dev) จากนั้น server ที่รัน tsx watch จะเริ่มใหม่ และหน้าจะโหลดใหม่
 
 client ต่อ server ที่ `http://<hostname>:2567` ถ้าจะเปลี่ยนให้ตั้ง `VITE_SERVER_URL`
 
@@ -117,6 +123,7 @@ client ต่อ server ที่ `http://<hostname>:2567` ถ้าจะเป
 /e2e      Vitest + playwright-core (เปิด server และ Vite ของตัวเอง)
 /server   Colyseus rooms + systems
 /shared   types, ค่าคงที่, logic ที่ต้องรันเหมือนกันทั้งสองฝั่ง (import เป็น .ts ตรง ๆ ไม่มี build step)
+          levels/*.json = ข้อมูลฉากของแต่ละ level (แหล่งเดียวที่ server ใช้ชนและ client ใช้วาด)
 /tools    asset pipeline + สคริปต์ตรวจอาร์ตใน CI
 /art      ไฟล์ต้นฉบับ .aseprite / .blend (มีแล้ว: palette/, reference/concept/ ซึ่งเก็บด้วย Git LFS)
 /infra    docker-compose, Dockerfile
@@ -129,6 +136,25 @@ client ต่อ server ที่ `http://<hostname>:2567` ถ้าจะเป
 - state ที่ sync (`server/src/state.ts`) มีเฉพาะสิ่งที่ client ต้องวาดหรือ reconcile: ตำแหน่ง, `lastSeq`, ฟิลด์ของ `Motion`, HP / ทรัพยากร และ `TargetState` ของหุ่นและมอน ส่วนค่าความละเอียดเต็มเก็บใน `PlayerSim` ฝั่ง server
 - ผู้เล่นคนอื่นใช้ `client/src/net/interpolation.ts` ซึ่งวาดย้อนหลัง 100ms และไม่ extrapolate
 - พื้นหลายชั้นใช้ walk polygon ใน `shared/src/walkmesh.ts` (polygon นูนที่ซ้อนกันในแนวตั้งได้ + ธง `solid` + ไม่มีการตก) เป็นตัวแทน navmesh ชั่วคราวของ `F-08` ถ้าเปลี่ยนเป็น navmesh ที่ bake ให้คงสัญญาของ `resolveMove()` ไว้ ฉากที่ client วาดสร้างจากข้อมูล level เดียวกับที่ server ใช้ชน
+
+**ฉากและ level (Step 2.1)**
+
+- **ไฟล์ level** `shared/src/levels/<id>.json` (`zone1` = ป่าไทรศักดิ์สิทธิ์, `spike` = ลานทดสอบ) มีครบทุกอย่างของฉาก: areas (หมอก แสง particle ช่วงเลเวล และ entry), walk polygon พร้อม surface, น้ำ, props, จุดเกิดมอน, หุ่นฝึก, เขตปลอดภัย และจุดแสง
+  - `parseLevelFile()` ตรวจทั้งรูปแบบและกติกา เช่น id ซ้ำ, polygon ต้องนูน, จุดเกิดต้องอยู่บนพื้น และห้ามอยู่ในเขตปลอดภัยหรือใต้สะพาน
+  - `toLevel()` สร้างข้อมูลสำหรับชน (walk polygon + กระบอกชนจาก prop ที่ `PROP_KINDS[kind].blockRadius > 0` + เขตปลอดภัย) ที่ server กับ client prediction ใช้ร่วมกัน
+  - `levelFile(id)` / `levelCollision(id)` โหลดและ cache และเลือกห้องด้วย `joinOrCreate(ZONE_ROOM, { level })` โดย `server.define(...).filterBy(['level'])` ทำให้แต่ละ level มี channel ของตัวเอง
+  - ไฟล์เขียนเป็น 1 รายการต่อบรรทัดด้วย `formatLevelFile()` ทั้ง editor และคนแก้มือ เพื่อให้ diff อ่านง่าย
+- **เขตปลอดภัย** (`inSafeZone`): server ปฏิเสธ cast ยกเว้นยา (`reason: 'safeZone'`), ผู้เล่นในเขตไม่โดนดาเมจ, มอนเลิกตามและเดินเข้าไม่ได้ ส่วน client เช็กก่อนเพื่อไม่ให้ท่าฟันเริ่มเล่น
+- **client** (`client/src/world/`):
+  - `surfaces.ts`: walk polygon เป็น prism แบบ low-poly รวม 1 mesh ต่อพื้นที่ต่อวัสดุ สีของแต่ละช่องมาจาก hash ของตำแหน่ง จึงเห็นเหมือนกันทุกเครื่อง
+  - `props.ts`: prop แบบ greybox (`BUILDERS` ต่อ kind) วาดเป็น thin instance ต่อ chunk 32 เมตร เก็บไว้ 3×3 chunk รอบตัว + อีก 1 วงกันการสร้างใหม่ถี่ ๆ
+  - `atmosphere.ts`: หมอก แสง และ particle ต่อพื้นที่ (blend 1.2 วิ) และเลือก point light ที่ใกล้ที่สุดไม่เกิน 4 ดวงบน PC / 1 ดวงบนมือถือ (Art Bible 10.4)
+  - ถ้าเพิ่ม prop kind ใหม่ ต้องเพิ่มทั้ง `PROP_KINDS` ใน shared และ `BUILDERS` ใน `props.ts`
+  - **billboard ต้นแบบ**: ถ้ามี atlas `props_ref` แล้ว `PropChunks.useBillboards()` จะวาด kind ที่มีภาพเป็น sprite หันหากล้อง ยืนบนพิกเซลล่างกลาง (SpriteManager ตัวเดียว = 1 draw call) แทนโมเดล 3D ส่วนการชนยังมาจากไฟล์ level เหมือนเดิม ภาพไม่หมุนตาม `rot` (prop ที่วางหลายมุม เช่น รั้ว จึงยังเป็น 3D) ส่วนต้นไม้และหินกลับซ้ายขวาตาม hash ของ id และภาพที่ยืนอยู่ระหว่างกล้องกับผู้เล่นจะจางเหลือ alpha 0.35 (`fadeOccluders`, Art Bible 10.4) ซึ่งได้ผลเพราะ SpriteManager ของ prop ถูกสร้างหลังของตัวละครและมอน (Babylon วาด sprite ตามลำดับที่สร้าง และเขียน depth ก่อนวาดสี) ถ้าย้ายลำดับการสร้าง ตัวละครหลังต้นไม้จะหายไปแทนที่จะมองทะลุได้
+  - **ข้อควรระวังของ thin instance**: mesh ที่ clone มาใช้ Geometry ร่วมกัน และ Babylon เก็บ buffer ของ matrix ไว้ที่ Geometry ดังนั้นทุก chunk ต้องเรียก `makeGeometryUnique()` ก่อน `thinInstanceSetBuffer` ไม่อย่างนั้น chunk จะเขียนทับ matrix ของกันและกัน แล้ว GPU วาดสามเหลี่ยมยักษ์เต็มจอ
+  - วัสดุที่ปิดแสง (`disableLighting`) ต้องตั้ง `emissiveColor` เป็นสีขาว (ฟังก์ชัน `unlit()`) ไม่อย่างนั้นสีจาก vertex color จะออกเป็นดำ
+  - grid ของ chunk เลื่อนไปครึ่ง chunk เพื่อให้ลานกลางหมู่บ้าน (0, 0) อยู่ใน chunk เดียว
+- `zone1.json` เริ่มจากสคริปต์สร้างครั้งเดียว ตอนนี้ไฟล์ JSON คือต้นฉบับ ให้แก้ผ่าน editor หรือแก้ไฟล์ตรง ๆ และ unit test (`shared/src/level/level.test.ts`) เช็กว่าเดินจากจุดเกิดไปถึงทุกพื้นที่และทุกจุดเกิดมอนได้โดยไม่กระโดด
 
 **การต่อสู้ (Step 1.2)**
 
@@ -183,6 +209,7 @@ client ต่อ server ที่ `http://<hostname>:2567` ถ้าจะเป
 - `hud.ts` เขียน DOM เฉพาะเมื่อค่าเปลี่ยน (`write()`, `BarView.set()`) เพราะ `update()` ถูกเรียกทุกเฟรม
 - ตัวเลขทั้งใน HUD และเลขดาเมจใช้ฟอนต์ bitmap ชุดเดียวใน `ui/bitmapFont.ts` ส่วนข้อความอื่นเป็น vector font จาก i18n
 - แถบ HP เหนือหัวมอน (`world/targets.ts`) ใช้ texture กรอบเดียวกันทุกตัว ขนาด 1 texel = 1/PPU เมตร
+- ถ้ามี atlas `ui_ref` (`import-ui`) `Hud.useRefArt()` จะเปลี่ยนวงรูปหน้า, แถบ (3-slice), ช่องสกิล และวงของแผงเป้าหมาย เป็นกรอบจากภาพ concept ส่วนสีที่เติม ไอคอน และตัวเลขยังวาดจากโค้ด และช่องยาเป็นวงกลม (`ROUND_SLOTS`)
 - e2e อ้างอิง class `.hud-target` ของแผงเป้าหมาย
 
 **Rooms และ service**
@@ -238,9 +265,9 @@ client ต่อ server ที่ `http://<hostname>:2567` ถ้าจะเป
 | 1.2 ✔ | สกิล 4 ช่อง | แถบลัด 7 ช่อง: โจมตี, สกิล 2–4, อัลติเมต, หลบ, ยา (GDD 4.3) ทำแล้ว |
 | 1.3 ✔ | วิญญาณเพลิง, คางคกควัน, เม่นไฟ | ผู้ใช้เลือกมอนจาก GDD 8.3: ลูกมอมหลงทาง, ไก่ป่าเพลิง, ผีโขมด ทำแล้ว |
 | 1.3 (ค้าง) | aggro table, ตาราง loot drop, config เป็น JSON ให้ designer แก้ | มอนเลือกเป้าตามการยั่ว → เป้าเดิม → คนที่ใกล้ที่สุด (ยังไม่มีตาราง threat ซึ่งจำเป็นตอนบอสปาร์ตี้ใน 2.2), ของดรอปมีแค่ชื่อใน `MONSTERS.drop` รอ inventory (3.1) และข้อมูลมอนเป็น TypeScript ใน `/shared/data/monsters.ts` ตามกฎใน CLAUDE.md ไม่ใช่ JSON ❓ ถ้าต้องการให้ designer แก้ได้โดยไม่แตะโค้ด ต้องตกลงรูปแบบก่อน |
-| 2.1 | หมู่บ้านริมน้ำ → ทางป่า → ศาลร้าง → ลานต้นไทร | 6 พื้นที่ + ห้องรากไทร (GDD 8.2, Art Bible 10.5) |
-| 2.1 | จุดแสงไดนามิกไม่เกิน 4 จุดบนจอ | PC ไม่เกิน 4 ดวง และ**มือถือไม่เกิน 1 ดวง** โคมและหน้าต่างใช้ emissive + baked (Art Bible 10.4) |
-| 2.1 ❓ | level data เป็น JSON + editor แบบง่าย | ตอนนี้ข้อมูล level เป็น TypeScript ใน `/shared` (`spikeLevel.ts`) ที่ทั้ง client และ server ใช้ชนเหมือนกัน ถ้าย้ายเป็น JSON ต้องมี validator ใน shared และให้ทั้งสองฝั่งโหลดไฟล์เดียวกัน ถามผู้ใช้ก่อนเลือกรูปแบบ |
+| 2.1 ✔ | หมู่บ้านริมน้ำ → ทางป่า → ศาลร้าง → ลานต้นไทร | 6 พื้นที่ + ห้องรากไทร (GDD 8.2, Art Bible 10.5) ทำแล้วแบบ greybox ส่วนห้องรากไทรเป็นดันเจี้ยนแยก (2.2) ในโซนมีแค่ประตูราก |
+| 2.1 ✔ | จุดแสงไดนามิกไม่เกิน 4 จุดบนจอ | PC ไม่เกิน 4 ดวง และ**มือถือไม่เกิน 1 ดวง** โคมและหน้าต่างใช้ emissive + baked (Art Bible 10.4) |
+| 2.1 ✔ | level data เป็น JSON + editor แบบง่าย | ผู้ใช้เลือก JSON + validator ใน `/shared` ทั้งสองฝั่งโหลดไฟล์เดียวกัน และ editor เป็น `?editor` ตอน dev ส่วน baked lightmap กับ chunk ที่โหลด asset จริงต้องรอโมเดล 3D (ตอนนี้ chunk สร้างและทิ้ง mesh ของ greybox) |
 | 2.2 ❓ | ปาร์ตี้ 4–8 คน, enrage 8 นาที, ล้างคำสาปที่ศาลหิน, สไปรต์แยกชิ้นที่ขยับด้วยโค้ด | ปาร์ตี้ 4 คน, enrage 12 นาที, ธาตุสลับตามเฟส (GDD 8.6), สไปรต์ทั้งตัว 192px + palette swap (Art Bible 5.5, 7.4) |
 | 2.2 ❓ | เรียกวิญญาณเพลิง, ลำแสงหยกต้องหลบหลังเสา | เรียก**นาควิญญาณราคี 3 ตัว (ธาตุมืดเสมอ)** และเฟส 3 คือ**ทะเลน้ำม่วงที่ต้องปีนแท่นรากไม้ 4 แท่น** ไม่มีเสาให้หลบ ส่วนลำแสงหยกคือ "ลำแสงเทพนาค" ที่เป็นพ่นพิษในธาตุหยก (GDD 8.6) และบอสจบด้วยการชำระ ไม่ใช่ฆ่า |
 | 2.3 | ฟอนต์พิกเซลภาษาไทย | vector font (Art Bible 9.1) |

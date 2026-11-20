@@ -27,6 +27,14 @@
 | 19 | [ref_19_naga_boss_p1_attacks.png](ref_19_naga_boss_p1_attacks.png) | บอสนาคเฟส 1: ท่าโจมตี 4 แบบ | [ref_18-19](briefs/ref_18-19_naga_boss_p1.md) | 7.4 | B-01, V-13 |
 | 20 | [ref_20_hero_spritesheet.png](ref_20_hero_spritesheet.png) | Hero sprite sheet แบบภาพวาด 15×8 ช่อง (~111×117 px) | ไม่มีคำอธิบายแนบมา, [ref_20_hero_spritesheet.json](ref_20_hero_spritesheet.json) บอกว่าช่องไหนคือท่าและทิศอะไร | – | C-02 |
 | 21 | [ref_21_ui_vfx_kit.png](ref_21_ui_vfx_kit.png) | UI kit (กรอบ HUD, กรอบคู่หู, ช่องสกิล, กรอบหัวข้อ, แผง 9-slice) + VFX หยกราว 17 ชิ้น | ไม่มีคำอธิบายแนบมา สร้างจาก prompt UI sheet (แผ่น 1–2) ที่ Claude ให้ | 9.6 | U-02–U-05, V-02, V-03, V-05–V-09, V-15 |
+| 22 | [ref_22_village_banyan.png](ref_22_village_banyan.png) | ต้นไทรกลางหมู่บ้าน + ศาลที่โคน (มุมกล้องเกม + มุมบน) | ไม่มีคำอธิบายแนบมา สร้างจาก prompt sheet หมู่บ้านแผ่น C ที่ Claude ให้ | 10.8 (kit หมู่บ้าน) | E-07, E-13 |
+| 23 | [ref_23_village_props.png](ref_23_village_props.png) | ของประกอบฉากหมู่บ้าน: รั้วไผ่, โอ่ง, โคม, ป้ายประกาศ, ศาลพระภูมิ, แผ่นหินลาน, แคร่, เกวียนมือ, กองฟืน | ไม่มีคำอธิบายแนบมา สร้างจาก prompt sheet หมู่บ้านแผ่น B | 10.8 (kit หมู่บ้าน) | E-02, E-06 |
+| 24 | [ref_24_village_buildings.png](ref_24_village_buildings.png) | อาคารหมู่บ้าน: เรือนใต้ถุนสูง, ร้านช่างเครื่องราง, หอสังเกตการณ์, ซุ้มประตู, ท่าน้ำ + เรือแม่ค้า, แผงตลาด 3 แบบ | ไม่มีคำอธิบายแนบมา สร้างจาก prompt sheet หมู่บ้านแผ่น A | 10.8 (kit หมู่บ้าน) | E-06, E-13 |
+| 25 | [ref_25_village_lanterns_v2.png](ref_25_village_lanterns_v2.png) | โคมหมู่บ้าน ฉบับแก้ (โคมไม้ไผ่ + โคมกระดาษ) | สร้างจาก prompt แก้ข้อ 3 ที่ Claude ให้ | 10.8 (ผลแก้รอบที่ 2) | E-06 |
+| 26 | [ref_26_village_stalls_v2.png](ref_26_village_stalls_v2.png) | แผงตลาด 3 แบบ ฉบับแก้สี | สร้างจาก prompt แก้ข้อ 2 | 10.8 (ผลแก้รอบที่ 2) | E-06 |
+| 27 | [ref_27_village_watchtower_v2.png](ref_27_village_watchtower_v2.png) | หอสังเกตการณ์ ฉบับหลังคาจั่ว | สร้างจาก prompt แก้ข้อ 1 | 10.8 (ผลแก้รอบที่ 2) | E-06 |
+| 28 | [ref_28_plants_kit.png](ref_28_plants_kit.png) | kit พืชและหิน 45 ชิ้น | ไม่มีคำอธิบายแนบมา (ผู้ใช้สร้างเพิ่มเอง) | 10.3 (kit พืช) | E-04, E-05 |
+| 29 | [ref_29_village_banyan_v2.png](ref_29_village_banyan_v2.png) | ต้นไทรกลางหมู่บ้าน ฉบับแก้ | สร้างจาก prompt แก้ข้อ 4 | 10.8 (ผลแก้รอบที่ 2) | E-07 |
 
 ## การเพิ่มภาพใหม่
 

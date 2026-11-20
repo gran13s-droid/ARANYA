@@ -1,76 +1,41 @@
 import {
   Color3,
-  Color4,
   DirectionalLight,
   HemisphericLight,
-  Mesh,
-  MeshBuilder,
   Scene,
-  StandardMaterial,
   TargetCamera,
   Vector3,
-  VertexBuffer,
-  VertexData,
   type AbstractEngine,
 } from '@babylonjs/core';
-import { PPU, type Level, type Vec3, type WalkPoly } from '@aranya/shared';
+import { PPU, type LevelArea, type LevelFile, type Vec3 } from '@aranya/shared';
 import { CAMERA_FOV_DEG, cameraDistanceFor, cameraOffset, pixelScaleFor } from '../camera/pixelCamera.ts';
 import { color, type PaletteName } from '../palette.ts';
+import { Atmosphere } from './atmosphere.ts';
+import { PropChunks } from './props.ts';
+import { buildSurfaces, type AreaSurfaces } from './surfaces.ts';
 
 /** Camera shake never exceeds this many screen pixels (Art Bible 10.7). */
 export const MAX_SHAKE_PX = 4;
 
+/** Area floors farther than this from the player (m, outside the area's bounds) are hidden. */
+const AREA_VISIBLE_MARGIN = 40;
+
 const c3 = (name: PaletteName): Color3 => Color3.FromHexString(color(name).hex);
-
-function flatMaterial(scene: Scene, name: PaletteName): StandardMaterial {
-  const m = new StandardMaterial(`mat_${name}`, scene);
-  m.diffuseColor = c3(name);
-  m.specularColor = Color3.Black();
-  m.backFaceCulling = false;
-  return m;
-}
-
-/**
- * Gives each triangle of a flat-shaded mesh one color from a small set, so a
- * flat surface still reads as low-poly. Deterministic (no Math.random) so every
- * client sees the same ground.
- */
-function paintFacets(mesh: Mesh, tones: readonly Color3[]): void {
-  const count = mesh.getTotalVertices();
-  const colors = new Float32Array(count * 4);
-  for (let tri = 0; tri < count / 3; tri++) {
-    const tone = tones[(tri * 7 + (tri >> 3) * 3) % tones.length]!;
-    for (let k = 0; k < 3; k++) colors.set([tone.r, tone.g, tone.b, 1], (tri * 3 + k) * 4);
-  }
-  mesh.setVerticesData(VertexBuffer.ColorKind, colors);
-}
-
-/** Builds a closed prism from a walk polygon down to `bottomY` (the visual of a walkable surface). */
-function prismFromPoly(scene: Scene, poly: WalkPoly, bottomY: (y: number) => number): Mesh {
-  const top = poly.verts;
-  const n = top.length;
-  const positions: number[] = [];
-  for (const v of top) positions.push(v.x, v.y, v.z);
-  for (const v of top) positions.push(v.x, bottomY(v.y), v.z);
-  const indices: number[] = [];
-  for (let i = 1; i < n - 1; i++) indices.push(0, i, i + 1, n, n + i + 1, n + i);
-  for (let i = 0; i < n; i++) {
-    const j = (i + 1) % n;
-    indices.push(i, n + i, j, j, n + i, n + j);
-  }
-  const mesh = new Mesh(`walk_${poly.id}`, scene);
-  const data = new VertexData();
-  data.positions = positions;
-  data.indices = indices;
-  data.applyToMesh(mesh);
-  mesh.convertToFlatShadedMesh();
-  return mesh;
-}
 
 export interface World {
   scene: Scene;
+  /** Props by chunk; the dev editor edits them in place and rebuilds. */
+  props: PropChunks;
   /** Re-centers the locked camera on a world position. */
   follow(target: Vec3): void;
+  /** Streams chunks and blends the area mood around the player; call every frame. */
+  update(dtMs: number, player: Vec3): void;
+  /** Area the player is in (for the dev probe). */
+  areaId(): string | null;
+  /** Chunks and lights currently in use (dev probe). */
+  stats(): { chunks: number; lights: number; billboards: number };
+  /** Called when the player enters another area. */
+  onAreaChange(cb: (area: LevelArea) => void): void;
   /** Recomputes the integer pixel scale; call after the canvas is resized. */
   resize(): void;
   /** Screen shake in screen pixels (clamped to MAX_SHAKE_PX) for `ms`. */
@@ -78,19 +43,18 @@ export interface World {
 }
 
 /**
- * Tech-spike scene: low-poly ground, three trees, dark-green fog and the
- * multi-level test geometry. Everything walkable or blocking is generated from
- * the shared Level data, so what the player sees is exactly what the server collides with.
+ * The zone scene, generated from the shared level file (shared/src/levels):
+ * walk polygons as low-poly floors, water, greybox props streamed by chunk,
+ * and per-area fog, light and particles. What the player sees is exactly what
+ * the server collides with.
  */
-export function createWorld(engine: AbstractEngine, level: Level): World {
+export function createWorld(engine: AbstractEngine, file: LevelFile): World {
   const scene = new Scene(engine);
-  const fog = c3('FOREST_DEEP');
-  scene.clearColor = new Color4(fog.r, fog.g, fog.b, 1);
   scene.fogMode = Scene.FOGMODE_EXP2;
-  scene.fogDensity = 0.022;
-  scene.fogColor = fog;
+  scene.fogColor = c3('FOREST_DEEP');
+  scene.fogDensity = 0.02;
 
-  // Key light from the top-left of the screen (north-west, above), same as the sprites (Art Bible 6).
+  // Key light from the top-left of the screen (north-west, above), same as the sprites (Art Bible 6, 10.4).
   const sun = new DirectionalLight('sun', new Vector3(1, -1.6, -1).normalize(), scene);
   sun.diffuse = c3('CREAM');
   sun.intensity = 0.9;
@@ -99,35 +63,21 @@ export function createWorld(engine: AbstractEngine, level: Level): World {
   ambient.groundColor = c3('FOREST_DEEP');
   ambient.intensity = 0.55;
 
-  const matGround = flatMaterial(scene, 'FOREST');
-  matGround.diffuseColor = Color3.White(); // tint comes from per-facet vertex colors
-  const matStone = flatMaterial(scene, 'STONE');
-  const matBark = flatMaterial(scene, 'BARK');
-  const matLeaves = flatMaterial(scene, 'FOREST');
-  const matLeavesLight = flatMaterial(scene, 'MOSS');
+  const areas: AreaSurfaces[] = buildSurfaces(scene, file);
+  const props = new PropChunks(scene, file.props);
+  const atmosphere = new Atmosphere(scene, file, sun, ambient);
+  const bounds = new Map(file.areas.map((a) => [a.id, a.bounds]));
 
-  for (const poly of level.polys) {
-    if (poly.id === 'ground') {
-      const ground = MeshBuilder.CreateGround('ground', { width: 48, height: 48, subdivisions: 16 }, scene);
-      ground.convertToFlatShadedMesh();
-      paintFacets(ground, [c3('FOREST'), Color3.Lerp(c3('FOREST'), c3('MOSS'), 0.15), Color3.Lerp(c3('FOREST'), c3('FOREST_DEEP'), 0.2)]);
-      ground.material = matGround;
-      continue;
+  const update = (dtMs: number, player: Vec3): void => {
+    props.update(player);
+    props.fadeOccluders(player);
+    atmosphere.update(dtMs, player);
+    for (const a of areas) {
+      const b = bounds.get(a.areaId);
+      const near = !b || (player.x > b[0] - AREA_VISIBLE_MARGIN && player.x < b[2] + AREA_VISIBLE_MARGIN && player.z > b[1] - AREA_VISIBLE_MARGIN && player.z < b[3] + AREA_VISIBLE_MARGIN);
+      for (const m of a.meshes) if (m.isEnabled() !== near) m.setEnabled(near);
     }
-    const mesh = poly.solid ? prismFromPoly(scene, poly, () => 0) : prismFromPoly(scene, poly, (y) => y - 0.3);
-    mesh.material = poly.solid ? matStone : matBark;
-  }
-
-  level.obstacles.forEach((o, i) => {
-    const trunk = MeshBuilder.CreateCylinder(`trunk_${i}`, { height: 2.4, diameterTop: 0.35, diameterBottom: 0.6, tessellation: 6 }, scene);
-    trunk.position.set(o.x, o.yMin + 1.2, o.z);
-    trunk.material = matBark;
-    trunk.convertToFlatShadedMesh();
-    const canopy = MeshBuilder.CreateIcoSphere(`canopy_${i}`, { radius: 1.8, subdivisions: 1 }, scene);
-    canopy.position.set(o.x, o.yMin + 3.4, o.z);
-    canopy.scaling.y = 0.8;
-    canopy.material = i % 2 === 0 ? matLeaves : matLeavesLight;
-  });
+  };
 
   const camera = new TargetCamera('camera', Vector3.Zero(), scene);
   camera.fov = (CAMERA_FOV_DEG * Math.PI) / 180;
@@ -166,5 +116,21 @@ export function createWorld(engine: AbstractEngine, level: Level): World {
 
   resize();
   follow(lastTarget);
-  return { scene, follow, resize, shake: shakeCamera };
+  update(0, file.spawn);
+  return {
+    scene,
+    props,
+    follow,
+    update,
+    areaId: () => atmosphere.areaId,
+    stats: () => ({ chunks: props.loadedCount, lights: atmosphere.activeLights, billboards: props.billboardCount }),
+    onAreaChange: (cb) => {
+      atmosphere.onAreaChange = cb;
+      // The first area was entered while building the world: report it now.
+      const first = file.areas.find((x) => x.id === atmosphere.areaId);
+      if (first) cb(first);
+    },
+    resize,
+    shake: shakeCamera,
+  };
 }

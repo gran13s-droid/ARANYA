@@ -248,3 +248,45 @@ describe('CombatWorld', () => {
     });
   });
 });
+
+describe('safe zones (GDD 8.2 hub, Art Bible 10.9 shrine fence)', () => {
+  const SAFE_LEVEL = { ...SPIKE_LEVEL, safeZones: [{ x: 0, z: -6, radius: 4 }] };
+  let clock: FakeClock;
+  let acks: CastAck[];
+  let hits: HitEvent[];
+  let world: CombatWorld;
+
+  beforeEach(() => {
+    clock = new FakeClock();
+    acks = [];
+    hits = [];
+    world = new CombatWorld(SAFE_LEVEL, createRng(5), clock, {
+      ack: (_id, a) => acks.push(a),
+      castStarted: () => {},
+      hits: (h) => hits.push(...h),
+      telegraph: () => {},
+      projectile: () => {},
+      projectileEnd: () => {},
+    });
+  });
+
+  it('refuses attacks inside a safe zone but allows potions', () => {
+    world.addPlayer('p1', SPAWN);
+    world.cast('p1', { seq: 1, skill: 'attack', fx: 0, fz: 1 });
+    expect(acks.at(-1)).toMatchObject({ ok: false, reason: 'safeZone' });
+    world.cast('p1', { seq: 2, skill: 'potion', fx: 0, fz: 1 });
+    expect(acks.at(-1)).toMatchObject({ ok: true });
+  });
+
+  it('monsters lose a player who steps into a safe zone and never walk in', () => {
+    const p = world.addPlayer('p1', { x: 0, y: 0, z: -14 });
+    const m = world.addMonster('fowl', 'fireFowl', { x: 0, y: 0, z: -19 });
+    clock.advance(300, () => world.tick(SPAWN));
+    expect(m.monster?.targetId).toBe('p1'); // Fire Fowl attacks first within 6 m
+    p.motion = { ...p.motion, z: -6 }; // the player runs into the hub
+    clock.advance(4000, () => world.tick(SPAWN));
+    expect(m.monster?.targetId ?? null).toBeNull();
+    expect(Math.hypot(m.pos.x - 0, m.pos.z + 6)).toBeGreaterThan(4);
+    expect(hits.filter((h) => h.target === 'p1' && h.kind === 'damage')).toHaveLength(0);
+  });
+});

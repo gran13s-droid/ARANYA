@@ -52,9 +52,16 @@ export function pixel(img: Image, x: number, y: number): [number, number, number
  * stay. Then peels `halo` rings of light anti-aliasing (channels >= haloThreshold)
  * off the character's edge.
  */
-export function removeBackground(img: Image, threshold = 232, halo = 2, haloThreshold = 205): number {
+export function removeBackground(img: Image, threshold = 232, halo = 2, haloThreshold = 205, shadow?: { min: number; spread: number }): number {
   const { width: w, height: h, data } = img;
-  const light = (i: number, t: number): boolean => data[i * 4 + 3]! > 0 && data[i * 4]! >= t && data[i * 4 + 1]! >= t && data[i * 4 + 2]! >= t;
+  const light = (i: number, t: number): boolean => {
+    if (data[i * 4 + 3]! === 0) return false;
+    const r = data[i * 4]!, g = data[i * 4 + 1]!, b = data[i * 4 + 2]!;
+    if (r >= t && g >= t && b >= t) return true;
+    // Optional: soft grey drop shadows painted under objects count as background too
+    // (neutral light greys; cream and gold parts of the object are saturated and stay).
+    return !!shadow && Math.min(r, g, b) >= shadow.min && Math.max(r, g, b) - Math.min(r, g, b) <= shadow.spread;
+  };
   const bg = new Uint8Array(w * h);
   const stack: number[] = [];
   const seed = (i: number): void => {
@@ -91,6 +98,40 @@ export function removeBackground(img: Image, threshold = 232, halo = 2, haloThre
     if (bg[i] && data[i * 4 + 3] !== 0) {
       data.set([0, 0, 0, 0], i * 4);
       cleared++;
+    }
+  }
+  return cleared;
+}
+
+/**
+ * Clears enclosed near-white regions of at least `minPixels` (the background
+ * seen through a gate or between tower legs, which the border flood fill in
+ * removeBackground cannot reach). Small white details such as flowers stay.
+ */
+export function removeEnclosedWhite(img: Image, minPixels: number, threshold = 236): number {
+  const { width: w, height: h, data } = img;
+  const white = (i: number): boolean => data[i * 4 + 3]! > 0 && data[i * 4]! >= threshold && data[i * 4 + 1]! >= threshold && data[i * 4 + 2]! >= threshold;
+  const seen = new Uint8Array(w * h);
+  let cleared = 0;
+  for (let start = 0; start < w * h; start++) {
+    if (seen[start] || !white(start)) continue;
+    const region: number[] = [];
+    const stack = [start];
+    seen[start] = 1;
+    while (stack.length) {
+      const p = stack.pop()!;
+      region.push(p);
+      const x = p % w, y = (p - x) / w;
+      for (const q of [x > 0 ? p - 1 : -1, x < w - 1 ? p + 1 : -1, y > 0 ? p - w : -1, y < h - 1 ? p + w : -1]) {
+        if (q >= 0 && !seen[q] && white(q)) {
+          seen[q] = 1;
+          stack.push(q);
+        }
+      }
+    }
+    if (region.length >= minPixels) {
+      for (const p of region) data.set([0, 0, 0, 0], p * 4);
+      cleared += region.length;
     }
   }
   return cleared;

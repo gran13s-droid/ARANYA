@@ -37,3 +37,26 @@ export interface AtlasJson {
     pivot: { x: number; y: number };
   };
 }
+
+/**
+ * Prop billboard atlas (`import-props`): one frame per prop kind, any size,
+ * drawn standing on its bottom-centre pixel at 32 px = 1 m. Prototype art cut
+ * from the concept sheets (Art Bible 2: reference only; final props are 3D).
+ */
+/**
+ * UI frame atlas (`import-ui`): frames cut from the UI kit concept (prototype,
+ * Art Bible 2) at 640x360 UI pixel size. `slice` = left/right cap widths as
+ * fractions of the frame width (3-slice for bars), `inner` = [left, top,
+ * right, bottom] fractions where a fill goes, `hole` = [cx, cy, r] fractions of
+ * the height for a transparent round centre (portrait rings).
+ */
+export interface UiAtlasJson {
+  frames: Record<string, { frame: AtlasRect; slice?: [number, number]; inner?: [number, number, number, number]; hole?: [number, number, number] }>;
+  meta: { image: string; size: { w: number; h: number }; kind: 'ui' };
+}
+
+export interface PropAtlasJson {
+  /** offsetZ: metres south (towards the camera) of the prop's position where the picture's bottom stands. */
+  frames: Record<string, { frame: AtlasRect; offsetZ?: number }>;
+  meta: { image: string; size: { w: number; h: number }; kind: 'props' };
+}

@@ -36,6 +36,13 @@ export interface Level {
   polys: readonly WalkPoly[];
   obstacles: readonly CylinderObstacle[];
   spawn: Vec3;
+  /** Circles with no fighting (GDD 8.2 hub, Art Bible 10.9 shrine fence). */
+  safeZones?: readonly { x: number; z: number; radius: number }[];
+}
+
+/** True inside a no-fighting zone: casts are refused there and monsters stay out. */
+export function inSafeZone(level: Level, pos: { x: number; z: number }): boolean {
+  return (level.safeZones ?? []).some((s) => (pos.x - s.x) ** 2 + (pos.z - s.z) ** 2 <= s.radius * s.radius);
 }
 
 export function containsXZ(poly: WalkPoly, x: number, z: number): boolean {

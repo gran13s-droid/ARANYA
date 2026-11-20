@@ -25,8 +25,11 @@ const clientUrl = inject('clientUrl');
 type Probe = NonNullable<Window['__aranyaDebug']>;
 type ProbeResult = ReturnType<Probe>;
 
-/** Software WebGL is slow and shares the CPU with the game server, so give each browser test room. */
-const BROWSER_TEST_TIMEOUT = 120_000;
+/**
+ * Software WebGL is slow and shares the CPU with the game server, so give each browser test room.
+ * The first page load can also wait for Vite to transform the whole module graph from scratch.
+ */
+const BROWSER_TEST_TIMEOUT = 180_000;
 
 describe.skipIf(!executablePath)('client in a real browser (2 tabs)', { timeout: BROWSER_TEST_TIMEOUT }, () => {
   let browser: Browser;
@@ -34,7 +37,8 @@ describe.skipIf(!executablePath)('client in a real browser (2 tabs)', { timeout:
   /** Every page opened by a test; closed after each test even when it fails, so failures never leak players into the next test. */
   const pages: Page[] = [];
 
-  const open = async (name: string, query = ''): Promise<Page> => {
+  /** Opens the client; tests default to the tech-spike training ground (`?level=spike`). */
+  const open = async (name: string, query = '', level = 'spike'): Promise<Page> => {
     const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
     pages.push(page);
     page.on('console', (m) => {
@@ -42,7 +46,8 @@ describe.skipIf(!executablePath)('client in a real browser (2 tabs)', { timeout:
     });
     page.on('pageerror', (e) => errors.push(`[${name}] pageerror: ${e.message}`));
     // Game readiness is checked through the probe, so don't wait for every resource.
-    await page.goto(clientUrl + query, { waitUntil: 'domcontentloaded', timeout: 60_000 });
+    const extra = query.replace(/^\?/, '');
+    await page.goto(`${clientUrl}?level=${level}${extra ? `&${extra}` : ''}`, { waitUntil: 'domcontentloaded', timeout: 120_000 });
     return page;
   };
 
@@ -187,6 +192,76 @@ describe.skipIf(!executablePath)('client in a real browser (2 tabs)', { timeout:
     await page.mouse.up();
     await expect.poll(async () => (await probe(page))!.acks.filter((a) => a.skill === 'attack' && a.ok).length - acksBefore, { timeout: 3_000 }).toBeGreaterThanOrEqual(3);
     expect(errors).toEqual([]);
+  });
+
+  it('loads zone 1 (Step 2.1): hub spawn, area banner, streamed chunks, safe zone, draw calls in budget', async () => {
+    const page = await open('zone1', '', 'zone1');
+    await expect.poll(async () => (await probe(page))?.local ?? null, { timeout: 20_000 }).not.toBeNull();
+    await expect.poll(async () => (await probe(page))!.area, { timeout: 5_000 }).toBe('hub');
+    await expect.poll(async () => page.locator('.ui-area.show').count(), { timeout: 5_000 }).toBe(1);
+    await page.waitForTimeout(1000);
+    const stats = (await probe(page))!;
+    expect(stats.level).toBe('zone1');
+    // Only the chunks around the player are built (3x3, plus hysteresis), not the whole zone.
+    expect(stats.world.chunks).toBeGreaterThan(0);
+    expect(stats.world.chunks).toBeLessThanOrEqual(16);
+    // Art Bible 10.2: at most 150 draw calls on PC.
+    expect(stats.drawCalls).toBeLessThanOrEqual(150);
+    // The hub is a safe zone (GDD 8.2): attacking shows a message and sends nothing.
+    await page.click('#game', { position: { x: 640, y: 200 } });
+    await page.keyboard.press('Escape');
+    const acks = stats.acks.length;
+    await page.keyboard.press('Digit1');
+    await expect.poll(async () => page.locator('.ui-toast.show').count(), { timeout: 2_000 }).toBe(1);
+    expect((await probe(page))!.acks.length).toBe(acks);
+    await page.screenshot({ path: `${artifacts}zone1_hub.png` });
+    writeFileSync(`${artifacts}zone1.json`, JSON.stringify({ drawCalls: stats.drawCalls, frameTimeMs: stats.frameTimeMs, world: stats.world, note: 'software WebGL (SwiftShader)' }, null, 2));
+    expect(errors).toEqual([]);
+  });
+
+  it('starts in every zone 1 area with ?at= (dev server) and renders each without errors', async () => {
+    const report: Record<string, unknown> = {};
+    for (const area of ['hub', 'shrine', 'meadow', 'stream', 'roots', 'valley']) {
+      const page = await open(area, `?at=${area}`, 'zone1');
+      await expect.poll(async () => (await probe(page))?.area ?? null, { timeout: 20_000 }).toBe(area);
+      await page.waitForTimeout(1200);
+      const stats = (await probe(page))!;
+      report[area] = { drawCalls: stats.drawCalls, world: stats.world, frameTimeMs: stats.frameTimeMs };
+      expect(stats.drawCalls, area).toBeLessThanOrEqual(150);
+      await page.screenshot({ path: `${artifacts}zone1_${area}.png` });
+      await page.close();
+    }
+    writeFileSync(`${artifacts}zone1_areas.json`, JSON.stringify(report, null, 2));
+    expect(errors).toEqual([]);
+  });
+
+  it('level editor (?editor): places, rotates and deletes a prop without moving the hero; save endpoint guards its path', async () => {
+    const page = await open('editor', '?editor');
+    await expect.poll(async () => (await probe(page))?.editor ?? null, { timeout: 20_000 }).not.toBeNull();
+    await expect.poll(async () => (await probe(page))?.local ?? null, { timeout: 15_000 }).not.toBeNull();
+    const before = (await probe(page))!.editor!.props;
+    await page.selectOption('.editor-panel select', 'prop:rock');
+    const me = (await probe(page))!.local!;
+    const spot = await screenOf(page, { x: me.x + 3, y: me.y, z: me.z });
+    await page.keyboard.down('Shift');
+    await page.mouse.click(spot.x, spot.y);
+    await page.keyboard.up('Shift');
+    await expect.poll(async () => (await probe(page))!.editor!.props, { timeout: 3_000 }).toBe(before + 1);
+    expect((await probe(page))!.editor!.selected).toMatch(/^rock_/);
+    // Editor clicks never reach click-to-move.
+    expect((await probe(page))!.moveOrder).toBeNull();
+    await page.keyboard.press('KeyE');
+    await page.screenshot({ path: `${artifacts}editor.png` });
+    await page.keyboard.press('Delete');
+    await expect.poll(async () => (await probe(page))!.editor!.props, { timeout: 3_000 }).toBe(before);
+    // The save endpoint only writes existing level files whose id matches (nothing is written here).
+    const status = (body: string, id: string): Promise<number> =>
+      page.evaluate(async ([b, i]) => (await fetch(`/__aranya/level/${i}`, { method: 'POST', body: b })).status, [body, id] as const);
+    expect(await status('{"id":"nope"}', 'nope')).toBe(404);
+    expect(await status('{"id":"zone1"}', 'spike')).toBe(400);
+    expect(await status('not json', 'spike')).toBe(400);
+    // The browser logs the expected 4xx answers above as console errors; anything else is a real error.
+    expect(errors.filter((e) => !e.includes('Failed to load resource'))).toEqual([]);
   });
 
   it('draws Lost Sprout monsters as 48 px pixel sprites (tracker M-01)', async () => {

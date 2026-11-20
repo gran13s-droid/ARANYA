@@ -1,6 +1,9 @@
-export type PaletteName =
-  | 'INK' | 'FOREST_DEEP' | 'FOREST' | 'MOSS' | 'JADE_DEEP' | 'JADE' | 'SPIRIT' | 'STONE'
-  | 'BARK' | 'EARTH' | 'GOLD' | 'CREAM' | 'FIRE' | 'PURPLE_DEEP' | 'CURSE';
+/** The 15 palette names in index order (art/palette/aranya-15.gpl; never reorder). */
+export const PALETTE_NAMES = [
+  'INK', 'FOREST_DEEP', 'FOREST', 'MOSS', 'JADE_DEEP', 'JADE', 'SPIRIT', 'STONE',
+  'BARK', 'EARTH', 'GOLD', 'CREAM', 'FIRE', 'PURPLE_DEEP', 'CURSE',
+] as const;
+export type PaletteName = (typeof PALETTE_NAMES)[number];
 
 export interface PaletteColor {
   index: number;

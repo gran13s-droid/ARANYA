@@ -1,14 +1,18 @@
 import { Room, type Client } from '@colyseus/core';
 import {
+  DEFAULT_LEVEL,
   Msg,
-  SPIKE_LEVEL,
   TICK_MS,
   createRng,
+  isLevelId,
+  levelCollision,
+  levelFile,
   parseCast,
   parseInput,
   stepMotion,
   type Element,
-  type MonsterId,
+  type Level,
+  type LevelId,
 } from '@aranya/shared';
 import { InputQueue } from '../inputQueue.ts';
 import { PlayerState, TargetState, ZoneState } from '../state.ts';
@@ -28,25 +32,15 @@ const MAX_CATCHUP_TICKS = 5;
 /** Weight of a new RTT sample in the moving average. */
 const RTT_SMOOTHING = 0.25;
 
-/** Training ground for Step 1.2: one dummy per element plus a sparring dummy that swings back. */
-/** Step 1.3 monsters (GDD 8.3), placed around the training ground. */
-const MONSTER_SPAWNS: { id: string; species: MonsterId; x: number; z: number }[] = [
-  { id: 'lostMom_1', species: 'lostMom', x: -12, z: -18 },
-  { id: 'lostMom_2', species: 'lostMom', x: -17, z: -13 },
-  { id: 'lostMom_3', species: 'lostMom', x: -8, z: -20 },
-  { id: 'fireFowl_1', species: 'fireFowl', x: 16, z: -18 },
-  { id: 'fireFowl_2', species: 'fireFowl', x: 19, z: -13 },
-  { id: 'khamod_1', species: 'khamod', x: 18, z: 3 },
-  { id: 'khamod_2', species: 'khamod', x: 3, z: 18 },
-];
+/** Options a client passes to joinOrCreate; rooms are filtered by level, so each level has its own channels. */
+export interface ZoneRoomOptions {
+  level?: string;
+  /** Dev server only (`--dev`): start at this area's entry point (client `?at=<area>`). */
+  at?: string;
+}
 
-const DUMMIES: { id: string; element: Element; x: number; z: number; sparring?: boolean; cursed?: boolean }[] = [
-  { id: 'dummy_fire', element: 'fire', x: -6, z: -14 },
-  { id: 'dummy_smoke', element: 'smoke', x: -2, z: -14 },
-  { id: 'dummy_jade', element: 'jade', x: 2, z: -14 },
-  { id: 'dummy_dark', element: 'dark', x: 6, z: -14, cursed: true },
-  { id: 'dummy_sparring', element: 'smoke', x: 12, z: -10, sparring: true },
-];
+/** `pnpm dev` and the e2e server pass --dev; production never honours client start points. */
+const DEV_SERVER = process.argv.includes('--dev');
 
 /**
  * One channel of a zone (CLAUDE.md: 1 room = 1 channel, ~80 players).
@@ -59,12 +53,18 @@ export class ZoneRoom extends Room<{ state: ZoneState }> {
   /** Flood guard: a client normally sends ~20-25 messages/s; far above that is disconnected (default is unlimited). */
   override maxMessagesPerSecond = 60;
 
-  private readonly level = SPIKE_LEVEL;
+  private levelId: LevelId = DEFAULT_LEVEL;
+  private level!: Level;
   private readonly sims = new Map<string, PlayerSim>();
   private combat!: CombatWorld;
   private readonly targetStates = new Map<string, TargetState>();
 
-  override onCreate(): void {
+  override onCreate(options: ZoneRoomOptions = {}): void {
+    // Unknown level ids fall back to the default zone instead of failing the join.
+    this.levelId = isLevelId(options.level) ? options.level : DEFAULT_LEVEL;
+    this.level = levelCollision(this.levelId);
+    const file = levelFile(this.levelId);
+    void this.setMetadata({ level: this.levelId });
     this.state = new ZoneState();
     this.patchRate = TICK_MS;
 
@@ -77,13 +77,14 @@ export class ZoneRoom extends Room<{ state: ZoneState }> {
       projectile: (evt) => this.broadcast(Msg.Projectile, evt),
       projectileEnd: (evt) => this.broadcast(Msg.ProjectileEnd, evt),
     });
-    console.log(`[zone] ${this.roomId} combat rng seed ${seed}`);
+    console.log(`[zone] ${this.roomId} level ${this.levelId}, combat rng seed ${seed}`);
 
-    for (const d of DUMMIES) {
+    // Training dummies and monster spawns come from the level file (shared/src/levels).
+    for (const d of file.dummies) {
       this.combat.addTarget({
         id: d.id,
         kind: d.sparring ? 'sparring' : 'dummy',
-        pos: { x: d.x, y: 0, z: d.z },
+        pos: { x: d.x, y: d.y, z: d.z },
         elements: d.cursed ? [d.element, 'dark'].filter((e, i, a) => a.indexOf(e) === i) as Element[] : [d.element],
         maxHp: 2000,
         def: 30,
@@ -97,8 +98,8 @@ export class ZoneRoom extends Room<{ state: ZoneState }> {
       this.targetStates.set(d.id, s);
     }
 
-    for (const m of MONSTER_SPAWNS) {
-      const t = this.combat.addMonster(m.id, m.species, { x: m.x, y: 0, z: m.z });
+    for (const m of file.spawns) {
+      const t = this.combat.addMonster(m.id, m.species, { x: m.x, y: m.y, z: m.z });
       const s = new TargetState();
       s.kind = 'monster';
       s.species = m.species;
@@ -139,9 +140,10 @@ export class ZoneRoom extends Room<{ state: ZoneState }> {
     this.clock.setInterval(() => this.broadcast(Msg.Ping, { t: this.clock.currentTime }), PING_EVERY_MS);
   }
 
-  override onJoin(client: Client): void {
+  override onJoin(client: Client, options: ZoneRoomOptions = {}): void {
+    const entry = DEV_SERVER && options.at ? levelFile(this.levelId).areas.find((a) => a.id === options.at)?.entry : undefined;
     // Spread joiners along a short line at the spawn point (kept clear of obstacles).
-    const spawn = { ...this.level.spawn, x: this.level.spawn.x + ((this.sims.size % 5) - 2) * 1.5 };
+    const spawn = entry ? { ...entry } : { ...this.level.spawn, x: this.level.spawn.x + ((this.sims.size % 5) - 2) * 1.5 };
     const combat = this.combat.addPlayer(client.sessionId, spawn);
     const state = new PlayerState();
     this.state.players.set(client.sessionId, state);

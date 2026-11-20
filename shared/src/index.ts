@@ -13,3 +13,8 @@ export * from './combat/damage.ts';
 export * from './combat/rng.ts';
 export * from './combat/shapes.ts';
 export { SPIKE_LEVEL } from './data/spikeLevel.ts';
+export * from './level/types.ts';
+export * from './level/build.ts';
+export * from './level/validate.ts';
+export * from './level/format.ts';
+export * from './levels/index.ts';

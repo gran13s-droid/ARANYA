@@ -19,7 +19,7 @@ declare module 'vitest' {
 function startGameServer(): Promise<ChildProcess> {
   // `--import tsx` keeps the server in this single node process, so killing it
   // leaves no orphaned children (unlike `pnpm dev` on Windows).
-  const child = spawn(process.execPath, ['--import', 'tsx', 'src/index.ts'], {
+  const child = spawn(process.execPath, ['--import', 'tsx', 'src/index.ts', '--dev'], {
     cwd: `${root}server`,
     env: { ...process.env, PORT: String(SERVER_PORT) },
     stdio: ['ignore', 'pipe', 'pipe'],

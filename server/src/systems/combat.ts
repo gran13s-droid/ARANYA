@@ -8,6 +8,7 @@ import {
   computeDamage,
   cooldownOf,
   hitDelayMs,
+  inSafeZone,
   inShape,
   initialMotion,
   isDodging,
@@ -28,6 +29,9 @@ import {
 } from '@aranya/shared';
 import { PositionHistory } from './history.ts';
 import { createMonsterState, onMonsterHurt, tickMonster, type MonsterHost, type MonsterState } from './monsters.ts';
+
+/** Skills allowed inside safe zones (no fighting there, but drinking a potion is fine). */
+const PEACEFUL_SKILLS: ReadonlySet<string> = new Set(['potion', 'manaPotion']);
 
 /**
  * Server-authoritative combat for one zone channel (ROADMAP 1.2).
@@ -207,6 +211,8 @@ export class CombatWorld implements MonsterHost {
     const reject = (reason: string): void => this.events.ack(playerId, { seq: msg.seq, skill: msg.skill, ok: false, reason });
 
     if (p.dead) return reject('dead');
+    // No fighting in safe zones (GDD 8.2 hub, Art Bible 10.9 shrine fence); potions are fine.
+    if (inSafeZone(this.level, p.motion) && !PEACEFUL_SKILLS.has(msg.skill)) return reject('safeZone');
     if (now < p.busyUntil - EARLY_GRACE_MS) return reject('busy');
     if (now < (p.readyAt[msg.skill] ?? 0) - EARLY_GRACE_MS) return reject('cooldown');
 
@@ -461,6 +467,7 @@ export class CombatWorld implements MonsterHost {
 
   private hitPlayer(p: CombatPlayer, attacker: CombatTarget, coef: number): HitEvent[] {
     const now = this.clock.now();
+    if (inSafeZone(this.level, p.motion)) return [];
     if (isDodging(p.motion)) return [];
     if (now <= p.parryUntil) {
       // ปัดป้องสวนกลับ: no damage, counter for 150% ATK (GDD 5.2).
@@ -497,7 +504,7 @@ export class CombatWorld implements MonsterHost {
     let best: CombatPlayer | null = null;
     let bestD = range;
     for (const p of this.players.values()) {
-      if (p.dead || Math.abs(p.motion.y - from.y) > 1.5) continue;
+      if (p.dead || Math.abs(p.motion.y - from.y) > 1.5 || inSafeZone(this.level, p.motion)) continue;
       const d = Math.hypot(p.motion.x - from.x, p.motion.z - from.z);
       if (d <= bestD) {
         best = p;
@@ -507,9 +514,10 @@ export class CombatWorld implements MonsterHost {
     return best;
   }
 
+  /** Where a player is for monster AI; null when dead or inside a safe zone (monsters lose them there). */
   playerPos(id: string): Vec3 | null {
     const p = this.players.get(id);
-    return p && !p.dead ? p.motion : null;
+    return p && !p.dead && !inSafeZone(this.level, p.motion) ? p.motion : null;
   }
 
   telegraph(evt: TelegraphEvent): void {

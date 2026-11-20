@@ -22,8 +22,9 @@ export interface NetState {
 }
 export type ZoneRoom = Room<unknown, NetState>;
 
-export function joinZone(serverUrl: string): Promise<ZoneRoom> {
-  return new Client(serverUrl).joinOrCreate<NetState>(ZONE_ROOM) as Promise<ZoneRoom>;
+/** Joins a channel of a level; tests use the tech-spike training ground (dummies and monsters near the spawn). */
+export function joinZone(serverUrl: string, level = 'spike'): Promise<ZoneRoom> {
+  return new Client(serverUrl).joinOrCreate<NetState>(ZONE_ROOM, { level }) as Promise<ZoneRoom>;
 }
 
 export const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));

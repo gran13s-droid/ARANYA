@@ -1,0 +1,10 @@
+{
+  "frames": [
+    { "name": "portrait", "source": "ref_21_ui_vfx_kit.png", "rect": [644, 46, 132, 136], "heightPx": 56, "hole": [0.5, 0.51, 0.39] },
+    { "name": "targetRing", "source": "ref_21_ui_vfx_kit.png", "rect": [644, 46, 132, 136], "heightPx": 38, "hole": [0.5, 0.51, 0.39] },
+    { "name": "bar", "source": "ref_21_ui_vfx_kit.png", "rect": [26, 328, 550, 62], "heightPx": 13, "slice": [0.1, 0.06], "inner": [0.1, 0.24, 0.06, 0.24] },
+    { "name": "barThin", "source": "ref_21_ui_vfx_kit.png", "rect": [26, 328, 550, 62], "heightPx": 8, "slice": [0.09, 0.06], "inner": [0.09, 0.25, 0.06, 0.25] },
+    { "name": "slot", "source": "ref_21_ui_vfx_kit.png", "rect": [1082, 32, 134, 136], "heightPx": 38 },
+    { "name": "slotRound", "source": "ref_21_ui_vfx_kit.png", "rect": [1580, 50, 84, 112], "heightPx": 32, "hole": [0.41, 0.53, 0.31] }
+  ]
+}

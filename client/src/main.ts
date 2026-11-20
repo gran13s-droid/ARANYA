@@ -1,5 +1,5 @@
 import { Engine, Matrix, PointerEventTypes, SceneInstrumentation, Vector3 } from '@babylonjs/core';
-import { Client } from '@colyseus/sdk';
+import { Client, type Room } from '@colyseus/sdk';
 import {
   CAST_SKILLS,
   INTERPOLATION_DELAY_MS,
@@ -7,13 +7,18 @@ import {
   MONSTERS,
   MotionAct,
   Msg,
-  SPIKE_LEVEL,
+  DEFAULT_LEVEL,
+  inSafeZone,
+  isLevelId,
+  levelCollision,
+  levelFile,
   SWORDSMAN_STATS,
   TICK_MS,
   ZONE_ROOM,
   hitDelayMs,
   monsterAtlasName,
   type CastAck,
+  type CastSkillId,
   type CastStarted,
   type Element,
   type MonsterId,
@@ -40,7 +45,7 @@ import { PredictedPlayer } from './net/prediction.ts';
 import { color, type PaletteName } from './palette.ts';
 import { CharacterLayer, type CharacterSprite } from './sprites/characterLayer.ts';
 import { facingFromMove } from './sprites/facing.ts';
-import { listAtlases, loadAtlas } from './sprites/loadAtlas.ts';
+import { listAtlases, loadAtlas, loadPropAtlas, loadUiAtlas } from './sprites/loadAtlas.ts';
 import { MonsterSprites } from './sprites/monsterSprites.ts';
 import { DODGE_KEY, HOTBAR_KEYS, Hud, type HudTarget } from './ui/hud.ts';
 import { TargetViews, type NetTarget, type TargetInfo } from './world/targets.ts';
@@ -83,8 +88,13 @@ for (const name of ['INK', 'FOREST_DEEP', 'JADE', 'SPIRIT', 'GOLD', 'CREAM', 'FI
 const engine = new Engine(canvas, false, { antialias: false, stencil: true });
 engine.setHardwareScalingLevel(1 / window.devicePixelRatio);
 
-const level = SPIKE_LEVEL;
-const world = createWorld(engine, level);
+// Level: zone 1 by default; `?level=spike` opens the tech-spike training ground (dummies, tests).
+const urlParams = new URLSearchParams(location.search);
+const requestedLevel = urlParams.get('level');
+const levelId = isLevelId(requestedLevel) ? requestedLevel : DEFAULT_LEVEL;
+const file = levelFile(levelId);
+const level = levelCollision(levelId);
+const world = createWorld(engine, file);
 const keyboard = new Keyboard();
 const instrumentation = new SceneInstrumentation(world.scene);
 instrumentation.captureFrameTime = true;
@@ -97,6 +107,27 @@ const softLock = new SoftLock(world.scene, targetViews);
 const clickMove = new ClickMove();
 const moveMarker = new MoveMarker(world.scene);
 const hud = new Hud(hudEl);
+// Area banner: monster levels, or "safe zone" when the area's entry point is in one (hub).
+world.onAreaChange((area) => {
+  const safe = inSafeZone(level, area.entry ?? file.spawn);
+  hud.showArea(t(`area.${area.id}` as MessageKey), area.levels ? t('area.levels', { min: area.levels[0], max: area.levels[1] }) : safe ? t('area.safe') : '');
+});
+
+/** Skills that are fine inside safe zones (the server applies the same rule). */
+const PEACEFUL_SKILLS: ReadonlySet<string> = new Set(['potion', 'manaPotion']);
+
+/** Joins the level's room; retries briefly because the dev server restarts when a level file is saved. */
+async function joinZone(client: Client): Promise<Room<NetState>> {
+  for (let attempt = 1; ; attempt++) {
+    try {
+      const at = import.meta.env.DEV ? urlParams.get('at') : null;
+      return await client.joinOrCreate<NetState>(ZONE_ROOM, at ? { level: levelId, at } : { level: levelId });
+    } catch (err) {
+      if (attempt >= 5) throw err;
+      await new Promise((r) => setTimeout(r, 1000));
+    }
+  }
+}
 
 /** Display name of a dummy or monster (i18n). */
 function targetName(kind: string, species: string): string {
@@ -128,6 +159,13 @@ async function start(): Promise<void> {
   const layer = new CharacterLayer(world.scene, level, atlas, imageUrl);
   // Monster sprites (48 px, tracker M-01..M-03); species without an atlas keep the low-poly placeholder.
   const built = await listAtlases();
+  // Prototype prop billboards cut from the concept sheets (import-props); kinds without a picture stay 3D.
+  // Prototype UI frames cut from the UI kit concept (import-ui); the HUD keeps its code-drawn frames without them.
+  if (built.has('ui_ref')) hud.useRefArt(await loadUiAtlas('ui_ref'));
+  if (built.has('props_ref')) {
+    const props = await loadPropAtlas('props_ref');
+    world.props.useBillboards(props.atlas, props.imageUrl);
+  }
   const monsterAtlases = new Map<string, Awaited<ReturnType<typeof loadAtlas>>>();
   await Promise.all(
     Object.keys(MONSTERS)
@@ -145,12 +183,14 @@ async function start(): Promise<void> {
     face.src = imageUrl;
   }
 
-  const params = new URLSearchParams(location.search);
-  const botCount = import.meta.env.DEV ? Math.min(Number(params.get('bots') ?? 0) || 0, layer.capacity - 16) : 0;
+  // Dev-only level editor (?editor); loaded on demand so it never ships in production builds.
+  const editor = import.meta.env.DEV && urlParams.has('editor') ? new (await import('./dev/editor.ts')).LevelEditor(world.scene, world, file, level) : null;
+
+  const botCount = import.meta.env.DEV ? Math.min(Number(urlParams.get('bots') ?? 0) || 0, layer.capacity - 16) : 0;
   const bots = botCount > 0 ? new BotSwarm(level, layer, botCount) : null;
 
   const serverUrl = (import.meta.env.VITE_SERVER_URL as string | undefined) ?? `http://${location.hostname}:2567`;
-  const room = await new Client(serverUrl).joinOrCreate<NetState>(ZONE_ROOM);
+  const room = await joinZone(new Client(serverUrl));
   const me = room.sessionId;
 
   let local: PredictedPlayer | null = null;
@@ -160,12 +200,21 @@ async function start(): Promise<void> {
   let localDead = false;
 
   const combat = new LocalCombat((msg) => room.send(Msg.Cast, msg), (skill) => hud.flash(skill));
+  /** Casts unless inside a safe zone (GDD 8.2): checked here so the swing never starts, and again on the server. */
+  const tryCast = (skill: CastSkillId, aim: { fx: number; fz: number }, now: number): boolean => {
+    if (local && inSafeZone(level, local.current) && !PEACEFUL_SKILLS.has(skill)) {
+      hud.toast(t('safeZone'));
+      return false;
+    }
+    return combat.tryCast(skill, aim, mine?.resource ?? 0, localSprite, now);
+  };
   /** Dev-only: recent cast acks for the e2e probe. */
   const ackLog: (CastAck & { t: number })[] = [];
 
   room.onMessage(Msg.Ping, (msg: unknown) => room.send(Msg.Pong, msg));
   room.onMessage(Msg.CastAck, (ack: CastAck) => {
     combat.onAck(ack, localSprite, performance.now());
+    if (!ack.ok && ack.reason === 'safeZone') hud.toast(t('safeZone'));
     if (import.meta.env.DEV) ackLog.push({ ...ack, t: Math.round(performance.now()) });
     if (ack.ok && ack.skill === 'ultimate') setTimeout(() => world.shake(4, 250), hitDelayMs('skill'));
   });
@@ -292,6 +341,10 @@ async function start(): Promise<void> {
         locked: softLock.selected,
         moveOrder: clickMove.order,
         monsterSprites: monsterSprites.count,
+        level: levelId,
+        editor: editor?.stats() ?? null,
+        area: world.areaId(),
+        world: world.stats(),
         monsterAnims: targetViews.spriteAnims(),
         targetPos: Object.fromEntries(targetViews.all().map((tg) => [tg.id, tg.pos])),
         projectiles: projectiles.count,
@@ -358,7 +411,7 @@ async function start(): Promise<void> {
       const aim = softLock.aim(player.current) ?? { fx: player.current.fx, fz: player.current.fz };
       for (const skill of CAST_SKILLS) {
         if (keyboard.consume(HOTBAR_KEYS[skill].code)) {
-          combat.tryCast(skill, aim, mine?.resource ?? 0, localSprite, now);
+          tryCast(skill, aim, now);
         }
       }
       // Click-to-move: holding on the ground keeps steering towards the cursor.
@@ -370,7 +423,7 @@ async function start(): Promise<void> {
       // Clicked target in reach: attack once, or keep attacking while the button is held.
       const chased = clickMove.chasing ? targetViews.get(clickMove.chasing) : null;
       if (chased && clickMove.inReach(player.current, chased.pos)) {
-        if ((pendingAttack || mouseDown) && combat.tryCast('attack', aimAt(chased, player.current) ?? aim, mine?.resource ?? 0, localSprite, now)) {
+        if ((pendingAttack || mouseDown) && tryCast('attack', aimAt(chased, player.current) ?? aim, now)) {
           pendingAttack = false;
         }
         if (!pendingAttack && !mouseDown) clickMove.cancel();
@@ -400,6 +453,7 @@ async function start(): Promise<void> {
       const pos = lerp(player.previous, player.current, accumulator / TICK_MS);
       localSprite.update(dt, pos, lastIntent);
       world.follow(pos);
+      world.update(dt, pos);
       hud.update({
         hp: mine?.hp ?? 0,
         maxHp: mine?.maxHp ?? SWORDSMAN_STATS.maxHp,
